@@ -1,0 +1,7 @@
+﻿{
+  "name": "gh-prod",
+  "issuer": "https://token.actions.githubusercontent.com",
+  "subject": "repo:KiladzeGiga/prod",
+  "description": "GitHub Actions OIDC for KiladzeGiga/Azure-project env prod",
+  "audiences": ["api://AzureADTokenExchange"]
+}
