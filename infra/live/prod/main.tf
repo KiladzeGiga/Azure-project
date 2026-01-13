@@ -1,5 +1,5 @@
 terraform {
-  backend "azurerm" {} # backend config passed via terraform init -backend-config
+  backend "azurerm" {} # backend config passed with terraform init -backend-config
   required_version = ">= 1.6"
   required_providers {
     azurerm = {
