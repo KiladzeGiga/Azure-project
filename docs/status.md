@@ -10,19 +10,22 @@
 ## Current Milestone
 - **Milestone:** M1 — Terraform foundations (remote state + OIDC + plan/apply gates)
 - **Status:** ✅ Done
+
 ## Proof (Week 01)
 - GitHub Actions apply run (OIDC + approval gate): https://github.com/KiladzeGiga/Azure-project/actions/runs/20956477711/job/60224768765
-- Manual approval gate: [screenshot](./assets/week-01/Manual%20approve.png)
-- Remote state in Azure Storage: [screenshot](./assets/week-01/tfs%20state%20in%20Azure%20storage.png)
-- Subscription activity log: [screenshot](./assets/week-01/Azure%20subscription%20Activity%20log.png)
-
+- Manual approval gate: [screenshot](./assets/week-01/manual-approval.png)
+- Remote state in Azure Storage: [screenshot](./assets/week-01/subscription-activity-log.png)
+- Subscription activity log: [screenshot](./assets/week-01/tfstate-in-storage.png)
+- azurerm: (.\Azure-project\infra\live\prod\.terraform\terraform.tfstate)
+- PR runs tf-plan: https://github.com/KiladzeGiga/Azure-project/pull/2
+- import vs recreate - (./state-import.md)
 
 ## What’s Done (evidence-first)
-- [✅] Terraform remote backend (azurerm) configured - .\Azure-project\infra\live\prod\.terraform\terraform.tfstate
+- [✅] Terraform remote backend (azurerm) configured - terraform.tfstate (link above)
 - [✅] GitHub Actions OIDC login works (no long-lived secrets) - proof: workflow run link above
-- [✅] PR runs `terraform fmt/validate/plan` - 
+- [✅] PR runs `terraform fmt/validate/plan` - proof: PR link above
 - [✅] main runs `terraform apply` behind manual approval - proof: approval screenshot + run link
-- [✅] Manual resource import handled (import vs recreate) documented - 
+- [✅] Manual resource import handled (import vs recreate) documented - state-import.md + run link
 
 ## Current Architecture (tiny, production-like)
 - **IaC:** Terraform
@@ -48,9 +51,9 @@
 **Outcome:** configured Terraform foundations (remote state + OIDC + plan/apply gates)
 
 ### Tasks (4–5h max)
-1) [✅] Task name — expected output artifact
-2) [✅] Task name — expected output artifact
-3) [✅] Task name — expected output artifact
+1) [✅] create documantations — ./docs directory
+2) [✅] create resources in Azure — screenshots + Workflow run + Command outputs in proof section
+3) [✅] create resources in GitHub — screenshots + Workflow run + Command outputs in proof section
 
 ### Proof to collect
 - [✅] Command outputs (paste snippets into docs)
@@ -58,11 +61,11 @@
 - [✅] Workflow run links
 
 ### Risks / blockers
-- (What might stop you this week)
+- (lack of time)
 
 ## Next 2 Weeks (preview)
 - Week 02: **Outcome:** AKS + ACR created by Terraform (minimal), kubectl access documented.
-- Week __: …
+- Week __: 
 
 ### Lessons (Week 01)
 - OIDC federation is strict: issuer/subject/audience must match exactly (environment subject mismatch caused AADSTS700213).
