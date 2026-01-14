@@ -15,12 +15,14 @@
 - Manual approval gate: [screenshot](./assets/week-01/Manual%20approve.png)
 - Remote state in Azure Storage: [screenshot](./assets/week-01/tfs%20state%20in%20Azure%20storage.png)
 - Subscription activity log: [screenshot](./assets/week-01/Azure%20subscription%20Activity%20log.png)
+- azurerm: .\Azure-project\infra\live\prod\.terraform\terraform.tfstate
+- PR runs tf-plan: https://github.com/KiladzeGiga/Azure-project/pull/2
 
 
 ## What’s Done (evidence-first)
-- [✅] Terraform remote backend (azurerm) configured - .\Azure-project\infra\live\prod\.terraform\terraform.tfstate
+- [✅] Terraform remote backend (azurerm) configured - terraform.tfstate (link above)
 - [✅] GitHub Actions OIDC login works (no long-lived secrets) - proof: workflow run link above
-- [✅] PR runs `terraform fmt/validate/plan` - 
+- [✅] PR runs `terraform fmt/validate/plan` - proof: PR link above
 - [✅] main runs `terraform apply` behind manual approval - proof: approval screenshot + run link
 - [✅] Manual resource import handled (import vs recreate) documented - 
 
