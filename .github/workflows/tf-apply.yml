@@ -2,7 +2,7 @@ name: terraform-apply
 
 on:
   push:
-    branches: [ "main" ]
+    branches: ["main"]
     paths:
       - "infra/**"
 
@@ -10,16 +10,24 @@ permissions:
   id-token: write
   contents: read
 
+defaults:
+  run:
+    shell: bash
+    working-directory: infra/live/prod
+
 jobs:
   apply:
     runs-on: ubuntu-latest
     environment: prod
-    defaults:
-      run:
-        working-directory: infra/live/prod
 
     steps:
       - uses: actions/checkout@v4
+
+      - name: Show Azure IDs (debug)
+        run: |
+          echo "AZURE_TENANT_ID=${{ vars.AZURE_TENANT_ID }}"
+          echo "AZURE_SUBSCRIPTION_ID=${{ vars.AZURE_SUBSCRIPTION_ID }}"
+          echo "AZURE_CLIENT_ID_APPLY=${{ vars.AZURE_CLIENT_ID_APPLY }}"
 
       - uses: azure/login@v2
         with:
