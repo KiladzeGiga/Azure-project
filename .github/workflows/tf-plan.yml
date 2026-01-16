@@ -10,16 +10,26 @@ permissions:
   contents: read
   pull-requests: read
 
+defaults:
+  run:
+    shell: bash
+    working-directory: infra/live/prod
+
 jobs:
   plan:
+    name: Plan (trusted PRs only)
     if: ${{ github.event.pull_request.head.repo.full_name == github.repository }}
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: infra/live/prod
 
     steps:
       - uses: actions/checkout@v4
+
+      # Debug (client-id is not secret; we want to confirm it's not empty/wrong)
+      - name: Show Azure IDs (debug)
+      - run: |
+          echo "AZURE_TENANT_ID=${{ vars.AZURE_TENANT_ID }}"
+          echo "AZURE_SUBSCRIPTION_ID=${{ vars.AZURE_SUBSCRIPTION_ID }}"
+          echo "AZURE_CLIENT_ID_PLAN=${{ vars.AZURE_CLIENT_ID_PLAN }}"
 
       - uses: azure/login@v2
         with:
@@ -42,3 +52,15 @@ jobs:
           terraform fmt -check
           terraform validate
           terraform plan -no-color
+
+  validate_fork_safe:
+    name: Validate (fork-safe, no Azure)
+    if: ${{ github.event.pull_request.head.repo.full_name != github.repository }}
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+      - run: terraform fmt -check
+      - run: terraform init -backend=false
+      - run: terraform validate
