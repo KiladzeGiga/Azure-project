@@ -24,9 +24,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # Debug (client-id is not secret; we want to confirm it's not empty/wrong)
       - name: Show Azure IDs (debug)
-      - run: |
+        run: |
           echo "AZURE_TENANT_ID=${{ vars.AZURE_TENANT_ID }}"
           echo "AZURE_SUBSCRIPTION_ID=${{ vars.AZURE_SUBSCRIPTION_ID }}"
           echo "AZURE_CLIENT_ID_PLAN=${{ vars.AZURE_CLIENT_ID_PLAN }}"
