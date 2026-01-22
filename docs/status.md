@@ -17,7 +17,8 @@
 - Remote state in Azure Storage: [screenshot](./assets/week-01/subscription-activity-log.png)
 - Subscription activity log: [screenshot](./assets/week-01/tfstate-in-storage.png)
 - azurerm: (.\Azure-project\infra\live\prod\.terraform\terraform.tfstate)
-- PR runs tf-plan: https://github.com/KiladzeGiga/Azure-project/pull/2
+- PR runs tf-apply: https://github.com/KiladzeGiga/Azure-project/actions/runs/21065340426
+- PR runs tf-plan:  https://github.com/KiladzeGiga/Azure-project/actions/runs/21065338584
 - import vs recreate - (./state-import.md)
 
 ## What’s Done (evidence-first)
@@ -71,3 +72,9 @@
 - OIDC federation is strict: issuer/subject/audience must match exactly (environment subject mismatch caused AADSTS700213).
 - Terraform won’t manage existing resources unless imported; importing avoids destructive “delete & recreate”.
 - Remote state is mandatory for collaboration and CI, and prevents local-state drift.
+- PLAN vs APPLY identities. Reduced risks from PRs from forks (untrusted code) for my public repo by:
+	Trust boundary in workflow: only run cloud-auth steps for same-repo PRs; forks run only fmt/validate (no Azure login).
+	Least privilege in Azure: separate identities:
+		PLAN identity: read-only (Reader on prod RG + state access only).
+		APPLY identity: higher privilege (Contributor), and only usable behind manual approval via GitHub Environments.
+- Terraform listKeys vs use_azuread_auth=true. key-based auth needs extra permissions, use_azuread_auth=true forces the backend to use Azure AD auth.
