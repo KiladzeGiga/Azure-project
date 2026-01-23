@@ -21,6 +21,10 @@
 - PR runs tf-plan:  https://github.com/KiladzeGiga/Azure-project/actions/runs/21065338584
 - import vs recreate - (./state-import.md)
 
+## Proof (Week 01)
+- Plan run link (ACR + random): https://github.com/KiladzeGiga/Azure-project/actions/runs/21285576850/job/61265788044
+- Apply run link (ACR created): https://github.com/KiladzeGiga/Azure-project/actions/runs/21285627844/job/61265959167
+
 ## What’s Done (evidence-first)
 - [✅] Terraform remote backend (azurerm) configured - terraform.tfstate (link above)
 - [✅] GitHub Actions OIDC login works (no long-lived secrets) - proof: workflow run link above
