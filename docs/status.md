@@ -21,9 +21,12 @@
 - PR runs tf-plan:  https://github.com/KiladzeGiga/Azure-project/actions/runs/21065338584
 - import vs recreate - (./state-import.md)
 
-## Proof (Week 01)
+## Proof (Week 02)
 - Plan run link (ACR + random): https://github.com/KiladzeGiga/Azure-project/actions/runs/21285576850/job/61265788044
 - Apply run link (ACR created): https://github.com/KiladzeGiga/Azure-project/actions/runs/21285627844/job/61265959167
+- kubectl nodes: aks-system-12484962-vmss000000   Ready    <none>   4m31s   v1.33.5
+- namespaces: kube-node-lease, kube-public, kube-system
+- az aks get-credentials -g rg-azproj-prod -n aks-azproj-lwt3q9 --overwrite-existing: Merged "aks-azproj-lwt3q9" as current context in C:\Users\gkiladze\.kube\config
 
 ## What’s Done (evidence-first)
 - [✅] Terraform remote backend (azurerm) configured - terraform.tfstate (link above)
