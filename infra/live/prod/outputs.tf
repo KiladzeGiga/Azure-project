@@ -13,3 +13,7 @@ output "aks_name" {
 output "aks_rg" {
   value = azurerm_kubernetes_cluster.aks.resource_group_name
 }
+
+output "acr_id" {
+  value = azurerm_container_registry.acr.id
+}
