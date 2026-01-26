@@ -5,11 +5,16 @@ on:
     branches: ["main"]
     paths:
       - "infra/**"
+      - ".github/workflows/tf-apply.yml"
   workflow_dispatch:
 
 permissions:
   id-token: write
   contents: read
+
+concurrency:
+  group: prod-terraform
+  cancel-in-progress: false
 
 defaults:
   run:

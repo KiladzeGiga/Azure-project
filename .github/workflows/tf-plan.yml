@@ -4,13 +4,16 @@ on:
   pull_request:
     paths:
       - "infra/**"
-      - ".github/workflows/**"
-  workflow_dispatch:
+      - ".github/workflows/tf-plan.yml"
 
 permissions:
   id-token: write
   contents: read
   pull-requests: read
+
+concurrency:
+  group: prod-terraform
+  cancel-in-progress: false
 
 defaults:
   run:

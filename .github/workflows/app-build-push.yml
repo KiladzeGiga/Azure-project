@@ -11,6 +11,10 @@ permissions:
   id-token: write
   contents: read
 
+concurrency:
+  group: prod-terraform
+  cancel-in-progress: false
+
 jobs:
   build_push:
     runs-on: ubuntu-latest
