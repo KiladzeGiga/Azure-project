@@ -104,7 +104,13 @@ jobs:
 
       - name: Prove /healthz from inside cluster
         run: |
-          OUT=$(kubectl run curl --rm --restart=Never --image=curlimages/curl -- \
-            curl -sS http://azproj-api.default.svc.cluster.local:8080/healthz)
+          kubectl delete pod curl --ignore-not-found=true
+          kubectl run curl --restart=Never --image=curlimages/curl --command -- \
+            sh -c 'curl -sS http://azproj-api.default.svc.cluster.local:8080/healthz'
+          kubectl wait --for=condition=Ready pod/curl --timeout=60s || true
+          kubectl wait --for=condition=Succeeded pod/curl --timeout=60s
+          OUT=$(kubectl logs pod/curl)
           echo "$OUT"
           test "$OUT" = "healthy"
+          kubectl delete pod curl --ignore-not-found=true
+
