@@ -5,6 +5,8 @@ on:
     branches: ["main"]
     paths:
       - "app/**"
+      - "charts/**"
+      - ".github/workflows/app-build-push.yml"
   workflow_dispatch:
 
 permissions:
@@ -22,6 +24,9 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+      
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
 
       - name: Azure login (OIDC)
         uses: azure/login@v2
@@ -63,3 +68,43 @@ jobs:
 
       - name: Show image
         run: echo "${{ env.IMAGE }}"
+
+      - name: Read AKS outputs
+        id: aks
+        working-directory: infra/live/prod
+        run: |
+          echo "aks_name=$(terraform output -raw aks_name)" >> $GITHUB_OUTPUT
+          echo "aks_rg=$(terraform output -raw aks_rg)" >> $GITHUB_OUTPUT
+
+      - name: Setup kubectl
+        uses: azure/setup-kubectl@v4
+
+      - name: Setup helm
+        uses: azure/setup-helm@v4
+
+      - name: Get AKS credentials (admin)
+        run: |
+          az aks get-credentials -g "${{ steps.aks.outputs.aks_rg }}" -n "${{ steps.aks.outputs.aks_name }}" --admin --overwrite-existing
+
+      - name: Helm lint
+        run: helm lint charts/azproj-api
+        
+      - name: Helm deploy
+        run: |
+          helm upgrade --install azproj-api charts/azproj-api --namespace default --create-namespace \
+            --set image.repository="${{ steps.acr.outputs.acr_login_server }}/azproj-api" \
+            --set image.tag="${{ github.sha }}" \
+            --wait --timeout 2m
+
+      - name: Verify rollout
+        run: |
+          kubectl rollout status deploy/azproj-api --timeout=120s
+          kubectl get pods -l app=azproj-api
+          kubectl get svc azproj-api
+
+      - name: Prove /healthz from inside cluster
+        run: |
+          OUT=$(kubectl run curl --rm --restart=Never --image=curlimages/curl -- \
+            curl -sS http://azproj-api.default.svc.cluster.local:8080/healthz)
+          echo "$OUT"
+          test "$OUT" = "healthy"
