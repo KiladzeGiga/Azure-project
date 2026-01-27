@@ -1,0 +1,6 @@
+image:
+  repository: ""
+  tag: ""
+replicaCount: 1
+service:
+  port: 8080
