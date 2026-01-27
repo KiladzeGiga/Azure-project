@@ -108,19 +108,30 @@ jobs:
 
           kubectl delete pod curl --ignore-not-found=true
 
-          # Run curl with timeouts + retries so DNS/service warm-up doesn't flake CI
           kubectl run curl --restart=Never --image=curlimages/curl --command -- \
             sh -c 'for i in 1 2 3 4 5; do curl -fsS --max-time 5 http://azproj-api.default.svc.cluster.local:8080/healthz && exit 0; sleep 2; done; exit 1'
 
-          # Wait for completion; if it fails/times out, dump diagnostics and fail the job
-          if ! kubectl wait --for=condition=Succeeded pod/curl --timeout=180s; then
-            echo "---- curl pod status ----"
+          # Poll pod phase (Succeeded/Failed) instead of kubectl wait condition=Succeeded (not a real condition)
+          for i in {1..60}; do
+            PHASE=$(kubectl get pod curl -o jsonpath='{.status.phase}' 2>/dev/null || echo "Missing")
+            echo "curl pod phase: $PHASE"
+            if [ "$PHASE" = "Succeeded" ]; then break; fi
+            if [ "$PHASE" = "Failed" ]; then
+              echo "---- curl pod describe ----"
+              kubectl describe pod curl || true
+              echo "---- curl pod logs ----"
+              kubectl logs pod/curl || true
+              exit 1
+            fi
+            sleep 2
+          done
+
+          PHASE=$(kubectl get pod curl -o jsonpath='{.status.phase}')
+          if [ "$PHASE" != "Succeeded" ]; then
+            echo "Timed out waiting for curl pod to finish"
             kubectl get pod curl -o wide || true
-            echo "---- curl pod describe ----"
             kubectl describe pod curl || true
-            echo "---- curl pod logs ----"
             kubectl logs pod/curl || true
-            echo "---- service + endpoints ----"
             kubectl get svc azproj-api -o wide || true
             kubectl get endpoints azproj-api -o yaml || true
             exit 1
@@ -129,7 +140,7 @@ jobs:
           OUT=$(kubectl logs pod/curl || true)
           echo "$OUT"
 
-          # Accept both: healthy  OR  "healthy"
+          # Accept both: healthy OR "healthy"
           OUT_CLEAN=$(echo "$OUT" | tr -d '\r\n' | sed 's/^"//; s/"$//')
           test "$OUT_CLEAN" = "healthy"
 
