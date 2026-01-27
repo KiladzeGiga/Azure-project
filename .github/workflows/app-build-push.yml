@@ -108,6 +108,7 @@ jobs:
 
           kubectl delete pod curl --ignore-not-found=true
 
+          # Run curl with timeouts + retries so DNS/service warm-up doesn't flake CI
           kubectl run curl --restart=Never --image=curlimages/curl --command -- \
             sh -c 'for i in 1 2 3 4 5; do curl -fsS --max-time 5 http://azproj-api.default.svc.cluster.local:8080/healthz && exit 0; sleep 2; done; exit 1'
 
@@ -122,14 +123,14 @@ jobs:
             echo "---- service + endpoints ----"
             kubectl get svc azproj-api -o wide || true
             kubectl get endpoints azproj-api -o yaml || true
-            echo "---- coredns ----"
-            kubectl get pods -n kube-system -l k8s-app=kube-dns -o wide || true
-            kubectl logs -n kube-system -l k8s-app=kube-dns --tail=50 || true
             exit 1
           fi
 
           OUT=$(kubectl logs pod/curl || true)
           echo "$OUT"
-          test "$OUT" = "healthy"
+
+          # Accept both: healthy  OR  "healthy"
+          OUT_CLEAN=$(echo "$OUT" | tr -d '\r\n' | sed 's/^"//; s/"$//')
+          test "$OUT_CLEAN" = "healthy"
 
           kubectl delete pod curl --ignore-not-found=true
