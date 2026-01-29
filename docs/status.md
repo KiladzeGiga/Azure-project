@@ -32,6 +32,12 @@ Merged "aks-azproj-lwt3q9" as current context in C:\Users\gkiladze\.kube\config
 - Post-destroy verification: `az aks list` and `az acr list` returned `ResourceGroupNotFound` (expected)
 - kubectl cluster-info: Kubernetes control plane is running at https://*.hcp.<region>.azmk8s.io
 
+## Proof (Week 03)
+- app-build-push (build → push → helm deploy): https://github.com/KiladzeGiga/Azure-project/actions/runs/21391990192/job/61580884028
+- Image pushed: `acrpkje3k.azurecr.io/azproj-api:07b42e3b6f387ab0a8828334aa9ef96c1daf5d16`
+- Rollout verified: `deployment "azproj-api" successfully rolled out`
+- In-cluster health proof (via Service DNS): `"healthy"`
+
 ## What’s Done (evidence-first)
 - [✅] Remote Terraform state in Azure Storage used by CI (OIDC + RBAC, no storage keys) — proof: Week 01 runs + storage screenshot
 - [✅] GitHub Actions plan/apply pipeline with environment approval gate — proof: apply run + approval screenshot
