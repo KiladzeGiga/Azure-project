@@ -1,40 +1,18 @@
-\# Destroy / Recreate Runbook (Cost-Control Mode)
+# Destroy / Recreate (cost control)
 
-If I’m not actively working: destroy the cluster the same day.
+## Why
+AKS costs money even when idle. For a portfolio project, I destroy between sessions and recreate when needed.
 
-\## Goal
+## What Terraform creates
+Terraform provisions Azure infrastructure:
+- RG, AKS, ACR, RBAC role assignments, etc.
 
-Keep monthly cost low by destroying AKS + ACR between sessions while keeping Terraform remote state intact.
+Terraform does **NOT** deploy the application into AKS.
 
+## What deploys the application
+App deploy is handled by CI (GitHub Actions):
+- build image -> push to ACR -> helm upgrade/install -> rollout check -> in-cluster /healthz proof
 
-
-\## What must survive
-
-\- `rg-azproj-tfstate` (Terraform backend RG)
-
-\- Storage account + container holding `prod.terraform.tfstate`
-
-
-
-\## What is safe to destroy
-
-\- `rg-azproj-prod` (AKS, ACR, networking created for the platform)
-
-
-
-\## Commands (PowerShell)
-
-
-
-\### Create / Update
-
-```powershell
-
-cd infra/live/prod
-
-terraform init -reconfigure
-
-terraform apply -auto-approve
-
-
-
+## Recreate procedure (expected)
+1) `tf-apply` to recreate infra
+2) run `app-build-push` workflow (manual dispatch or app/chart change) to deploy the app

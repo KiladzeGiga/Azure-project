@@ -142,6 +142,7 @@ jobs:
 
           # Accept both: healthy OR "healthy"
           OUT_CLEAN=$(echo "$OUT" | tr -d '\r\n' | sed 's/^"//; s/"$//')
+          echo "HEALTH_PROOF=$OUT_CLEAN"
           test "$OUT_CLEAN" = "healthy"
 
           kubectl delete pod curl --ignore-not-found=true
