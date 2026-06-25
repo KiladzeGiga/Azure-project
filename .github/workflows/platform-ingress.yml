@@ -1,0 +1,87 @@
+name: platform-ingress
+
+on:
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+concurrency:
+  group: prod-platform
+  cancel-in-progress: false
+
+jobs:
+  ingress:
+    runs-on: ubuntu-latest
+    environment: prod
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Azure login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID_APPLY }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Terraform init (backend)
+        working-directory: infra/live/prod
+        run: |
+          terraform init \
+            -backend-config="resource_group_name=${{ vars.TFSTATE_RG }}" \
+            -backend-config="storage_account_name=${{ vars.TFSTATE_SA }}" \
+            -backend-config="container_name=${{ vars.TFSTATE_CONTAINER }}" \
+            -backend-config="key=prod.terraform.tfstate" \
+            -backend-config="use_azuread_auth=true"
+
+      - name: Read platform outputs
+        id: platform
+        working-directory: infra/live/prod
+        run: |
+          echo "aks_name=$(terraform output -raw aks_name)" >> $GITHUB_OUTPUT
+          echo "aks_rg=$(terraform output -raw aks_rg)" >> $GITHUB_OUTPUT
+          echo "ingress_public_ip=$(terraform output -raw ingress_public_ip)" >> $GITHUB_OUTPUT
+
+      - name: Setup kubectl
+        uses: azure/setup-kubectl@v4
+
+      - name: Setup helm
+        uses: azure/setup-helm@v4
+
+      - name: Get AKS credentials
+        run: |
+          az aks get-credentials \
+            -g "${{ steps.platform.outputs.aks_rg }}" \
+            -n "${{ steps.platform.outputs.aks_name }}" \
+            --admin \
+            --overwrite-existing
+
+      - name: Install ingress-nginx
+        run: |
+          helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx
+          helm repo update
+
+          kubectl create namespace ingress-nginx --dry-run=client -o yaml | kubectl apply -f -
+
+          helm upgrade --install ingress-nginx ingress-nginx/ingress-nginx \
+            -n ingress-nginx \
+            --set controller.service.type=LoadBalancer \
+            --set controller.service.loadBalancerIP="${{ steps.platform.outputs.ingress_public_ip }}" \
+            --wait --timeout 5m
+
+      - name: Verify ingress-nginx
+        run: |
+          kubectl -n ingress-nginx rollout status deployment/ingress-nginx-controller --timeout=180s
+
+          echo "Expected IP: ${{ steps.platform.outputs.ingress_public_ip }}"
+          kubectl -n ingress-nginx get svc ingress-nginx-controller -o wide
+
+          ACTUAL_IP=$(kubectl -n ingress-nginx get svc ingress-nginx-controller -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+          echo "Actual IP: $ACTUAL_IP"
+
+          test "$ACTUAL_IP" = "${{ steps.platform.outputs.ingress_public_ip }}"

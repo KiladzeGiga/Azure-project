@@ -74,7 +74,11 @@ Reasons:
 Create a Terraform-managed static public IP for ingress.
 
 Proof:
-- Terraform output shows ingress public IP.
+- Terraform apply succeeded.
+- Static ingress public IP created by Terraform.
+- Outputs added:
+ingress_public_ip = "20.126.28.109"
+ingress_public_ip_id = "/subscriptions/d5f8aa68-aa66-4608-b915-02a8051662e1/resourceGroups/rg-azproj-prod/providers/Microsoft.Network/publicIPAddresses/pip-azproj-ingress"
 
 ### Phase 2 — Install ingress-nginx
 Install ingress-nginx using Helm and bind it to the static public IP.
