@@ -84,7 +84,14 @@ ingress_public_ip_id = "/subscriptions/d5f8aa68-aa66-4608-b915-02a8051662e1/reso
 Install ingress-nginx using Helm and bind it to the static public IP.
 
 Proof:
-- ingress-nginx controller Service has the expected external IP.
+- `platform-ingress` workflow succeeded.
+- ingress-nginx installed by Helm into namespace `ingress-nginx`.
+- ingress-nginx controller rolled out successfully.
+- Static public IP bound successfully:
+  - Expected IP: `20.126.28.109`
+  - Actual IP: `20.126.28.109`
+- Issue found and fixed:
+  - AKS cloud controller identity needed `Network Contributor` on `rg-azproj-prod` to use the Terraform-created public IP.
 
 ### Phase 3 — Add app Ingress
 Update the app Helm chart to create an Ingress rule.
