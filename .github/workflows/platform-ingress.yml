@@ -72,6 +72,7 @@ jobs:
             -n ingress-nginx \
             --set controller.service.type=LoadBalancer \
             --set controller.service.loadBalancerIP="${{ steps.platform.outputs.ingress_public_ip }}" \
+            --set controller.service.annotations."service\.beta\.kubernetes\.io/azure-load-balancer-resource-group"="${{ steps.platform.outputs.aks_rg }}" \
             --wait --timeout 5m
 
       - name: Verify ingress-nginx
