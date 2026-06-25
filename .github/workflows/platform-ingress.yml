@@ -76,12 +76,27 @@ jobs:
 
       - name: Verify ingress-nginx
         run: |
+          set -e
+
           kubectl -n ingress-nginx rollout status deployment/ingress-nginx-controller --timeout=180s
 
-          echo "Expected IP: ${{ steps.platform.outputs.ingress_public_ip }}"
+          EXPECTED_IP="${{ steps.platform.outputs.ingress_public_ip }}"
+          echo "Expected IP: $EXPECTED_IP"
+
+          for i in {1..60}; do
+            ACTUAL_IP=$(kubectl -n ingress-nginx get svc ingress-nginx-controller -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null || true)
+            echo "Attempt $i: Actual IP: ${ACTUAL_IP:-<pending>}"
+
+            if [ "$ACTUAL_IP" = "$EXPECTED_IP" ]; then
+              echo "Ingress public IP assigned correctly."
+              kubectl -n ingress-nginx get svc ingress-nginx-controller -o wide
+              exit 0
+            fi
+
+            sleep 10
+          done
+
+          echo "Timed out waiting for ingress public IP."
           kubectl -n ingress-nginx get svc ingress-nginx-controller -o wide
-
-          ACTUAL_IP=$(kubectl -n ingress-nginx get svc ingress-nginx-controller -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
-          echo "Actual IP: $ACTUAL_IP"
-
-          test "$ACTUAL_IP" = "${{ steps.platform.outputs.ingress_public_ip }}"
+          kubectl -n ingress-nginx describe svc ingress-nginx-controller
+          exit 1
