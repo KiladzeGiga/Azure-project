@@ -6,5 +6,9 @@ resource "azurerm_public_ip" "ingress" {
   allocation_method = "Static"
   sku               = "Standard"
 
-  tags = local.tags
+  tags = {
+    project     = "azure-project"
+    environment = "prod"
+    managed_by  = "terraform"
+  }
 }
