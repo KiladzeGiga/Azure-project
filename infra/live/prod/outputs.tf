@@ -17,3 +17,13 @@ output "aks_rg" {
 output "acr_id" {
   value = azurerm_container_registry.acr.id
 }
+
+output "ingress_public_ip" {
+  description = "Static public IP address for ingress-nginx"
+  value       = azurerm_public_ip.ingress.ip_address
+}
+
+output "ingress_public_ip_id" {
+  description = "Azure resource ID of the ingress public IP"
+  value       = azurerm_public_ip.ingress.id
+}
