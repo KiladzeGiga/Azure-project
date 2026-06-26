@@ -92,6 +92,7 @@ jobs:
       - name: Helm deploy
         run: |
           helm upgrade --install azproj-api charts/azproj-api \
+            --reset-values \
             --set image.repository="${{ steps.acr.outputs.acr_login_server }}/azproj-api" \
             --set image.tag="${{ github.sha }}" \
             --set ingress.enabled=true \
