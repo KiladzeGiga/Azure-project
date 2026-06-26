@@ -1,6 +1,0 @@
-﻿{
-  "name": "gh-prod-env",
-  "issuer": "https://token.actions.githubusercontent.com",
-  "subject": "repo:KiladzeGiga/Azure-project:environment:prod",
-  "audiences": ["api://AzureADTokenExchange"]
-}

@@ -1,6 +1,0 @@
-﻿{
-  "name": "gh-pr",
-  "issuer": "https://token.actions.githubusercontent.com",
-  "subject": "repo:KiladzeGiga/Azure-project:pull_request",
-  "audiences": ["api://AzureADTokenExchange"]
-}
