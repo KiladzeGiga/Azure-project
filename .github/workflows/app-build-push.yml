@@ -96,6 +96,8 @@ jobs:
             --set image.tag="${{ github.sha }}" \
             --set ingress.enabled=true \
             --set ingress.host="api.gkiladze.space" \
+            --set tls.enabled=true \
+            --set tls.email="YOUR_EMAIL_HERE" \
             --wait --timeout 2m
 
       - name: Verify rollout
