@@ -147,6 +147,7 @@ jobs:
           test "$OUT_CLEAN" = "healthy"
 
           kubectl delete pod curl --ignore-not-found=true
+
       - name: Prove public HTTP through ingress
         run: |
           set -e
@@ -154,22 +155,37 @@ jobs:
           INGRESS_IP=$(kubectl -n ingress-nginx get svc ingress-nginx-controller -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
           echo "Ingress IP: $INGRESS_IP"
 
-          for i in {1..30}; do
-            OUT=$(curl -fsS --max-time 5 "http://$INGRESS_IP/healthz" || true)
-            echo "Attempt $i: ${OUT:-<no response>}"
+          echo "---- ingress ----"
+          kubectl get ingress azproj-api -o wide
+          kubectl describe ingress azproj-api
 
-            OUT_CLEAN=$(echo "$OUT" | tr -d '\r\n' | sed 's/^"//; s/"$//')
-            if [ "$OUT_CLEAN" = "healthy" ]; then
-              echo "PUBLIC_HTTP_PROOF=healthy"
-              exit 0
-            fi
+          echo "---- backend service/endpoints ----"
+          kubectl get svc azproj-api -o wide
+          kubectl get endpoints azproj-api -o yaml
 
+          echo "---- ingress-nginx service ----"
+          kubectl -n ingress-nginx get svc ingress-nginx-controller -o wide
+
+          echo "---- test from inside cluster to app service ----"
+          kubectl run curl-internal --rm -i --restart=Never --image=curlimages/curl -- \
+            curl -sv --max-time 10 http://azproj-api.default.svc.cluster.local:8080/healthz || true
+
+          echo "---- test from GitHub runner to public ingress ----"
+          for i in {1..12}; do
+            echo "Attempt $i"
+            curl -sv --connect-timeout 5 --max-time 15 "http://$INGRESS_IP/healthz" || true
+            echo ""
             sleep 10
           done
 
-          echo "Public HTTP proof failed"
-          kubectl get ingress
-          kubectl describe ingress azproj-api || true
-          kubectl get svc azproj-api -o wide || true
-          kubectl -n ingress-nginx get svc ingress-nginx-controller -o wide || true
-          exit 1
+          echo "---- ingress-nginx controller logs tail ----"
+          kubectl -n ingress-nginx logs deploy/ingress-nginx-controller --tail=80 || true
+
+          echo "---- final strict check ----"
+          OUT=$(curl -sS --connect-timeout 5 --max-time 15 "http://$INGRESS_IP/healthz" || true)
+          echo "OUT=$OUT"
+
+          OUT_CLEAN=$(echo "$OUT" | tr -d '\r\n' | sed 's/^"//; s/"$//')
+          test "$OUT_CLEAN" = "healthy"
+
+          echo "PUBLIC_HTTP_PROOF=healthy"
