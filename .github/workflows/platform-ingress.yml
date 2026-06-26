@@ -72,8 +72,9 @@ jobs:
             -n ingress-nginx \
             --set controller.service.type=LoadBalancer \
             --set controller.service.loadBalancerIP="${{ steps.platform.outputs.ingress_public_ip }}" \
-            --set controller.service.annotations."service\.beta\.kubernetes\.io/azure-load-balancer-resource-group"="${{ steps.platform.outputs.aks_rg }}" \
-            --set controller.service.annotations."service\.beta\.kubernetes\.io/azure-load-balancer-health-probe-request-path"="/healthz"
+            --set controller.service.externalTrafficPolicy=Local \
+            --set-string controller.service.annotations."service\.beta\.kubernetes\.io/azure-load-balancer-resource-group"="${{ steps.platform.outputs.aks_rg }}" \
+            --set-string controller.service.annotations."service\.beta\.kubernetes\.io/azure-load-balancer-health-probe-request-path"="/healthz" \
             --wait --timeout 5m
 
       - name: Verify ingress-nginx
@@ -102,3 +103,21 @@ jobs:
           kubectl -n ingress-nginx get svc ingress-nginx-controller -o wide
           kubectl -n ingress-nginx describe svc ingress-nginx-controller
           exit 1
+      - name: Debug ingress-nginx service
+        run: |
+          echo "---- ingress-nginx service yaml ----"
+          kubectl -n ingress-nginx get svc ingress-nginx-controller -o yaml
+
+          echo "---- ingress-nginx service describe ----"
+          kubectl -n ingress-nginx describe svc ingress-nginx-controller
+
+          echo "---- ingress-nginx pods ----"
+          kubectl -n ingress-nginx get pods -o wide
+
+          echo "---- test public IP directly ----"
+          curl -sv --connect-timeout 5 --max-time 15 http://20.126.28.109/healthz || true
+
+          echo "---- test DNS host with forced resolve ----"
+          curl -sv --connect-timeout 5 --max-time 15 \
+            --resolve api.gkiladze.space:80:20.126.28.109 \
+            http://api.gkiladze.space/healthz || true
