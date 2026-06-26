@@ -72,6 +72,7 @@ jobs:
             -n ingress-nginx \
             --set controller.service.type=LoadBalancer \
             --set controller.service.loadBalancerIP="${{ steps.platform.outputs.ingress_public_ip }}" \
+            --set controller.service.externalTrafficPolicy=Local
             --set controller.service.annotations."service\.beta\.kubernetes\.io/azure-load-balancer-resource-group"="${{ steps.platform.outputs.aks_rg }}" \
             --set controller.service.annotations."service\.beta\.kubernetes\.io/azure-load-balancer-health-probe-request-path"="/healthz"
             --wait --timeout 5m
