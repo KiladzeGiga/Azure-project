@@ -116,7 +116,28 @@ Proof:
 Point a DNS record to the ingress public IP.
 
 Proof:
-- hostname resolves to the public IP.
+- `platform-ingress` workflow succeeded.
+- `app-build-push` workflow succeeded.
+- DNS A record created:
+  - `api.gkiladze.space` → `20.126.28.109`
+- App Ingress uses host-based routing:
+  - Host: `api.gkiladze.space`
+  - Path: `/`
+  - Backend: `azproj-api:8080`
+- Public DNS HTTP proof succeeded:
+  - `http://api.gkiladze.space/healthz`
+  - `PUBLIC_DNS_HTTP_PROOF=http_200`
+
+## Issue found
+After switching from hostless Ingress to host-based Ingress, public traffic timed out even though DNS and Ingress were correct.
+
+## Fix
+Updated ingress-nginx Service configuration:
+- `externalTrafficPolicy=Local`
+- Azure Load Balancer health probe request path annotation
+- kept Azure public IP resource group annotation
+
+This allowed Azure Load Balancer health checks to succeed and traffic to reach ingress-nginx.
 
 ### Phase 5 — Add TLS
 Install cert-manager and issue a certificate.
