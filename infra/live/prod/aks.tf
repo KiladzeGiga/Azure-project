@@ -10,6 +10,8 @@ resource "azurerm_kubernetes_cluster" "aks" {
   resource_group_name = azurerm_resource_group.prod.name
   dns_prefix          = "azproj-${random_string.aks_suffix.result}"
 
+  oidc_issuer_enabled = true
+
   identity {
     type = "SystemAssigned"
   }
