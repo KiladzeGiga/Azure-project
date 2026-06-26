@@ -27,3 +27,8 @@ output "ingress_public_ip_id" {
   description = "Azure resource ID of the ingress public IP"
   value       = azurerm_public_ip.ingress.id
 }
+
+output "api_fqdn" {
+  description = "Public API DNS name"
+  value       = azurerm_dns_a_record.api.fqdn
+}

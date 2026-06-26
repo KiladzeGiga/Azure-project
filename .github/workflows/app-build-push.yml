@@ -95,6 +95,7 @@ jobs:
             --set image.repository="${{ steps.acr.outputs.acr_login_server }}/azproj-api" \
             --set image.tag="${{ github.sha }}" \
             --set ingress.enabled=true \
+            --set ingress.host="api.gkiladze.space" \
             --wait --timeout 2m
 
       - name: Verify rollout
@@ -152,14 +153,14 @@ jobs:
         run: |
           set -e
 
-          INGRESS_IP=$(kubectl -n ingress-nginx get svc ingress-nginx-controller -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
-          echo "Ingress IP: $INGRESS_IP"
+          HOST="api.gkiladze.space"
+          echo "Host: $HOST"
 
           for i in {1..12}; do
             STATUS=$(curl -sS -o /tmp/ingress-body.txt -w "%{http_code}" \
               --connect-timeout 5 \
               --max-time 15 \
-              "http://$INGRESS_IP/healthz" || true)
+              "http://$HOST/healthz" || true)
 
             echo "Attempt $i: HTTP $STATUS"
 
@@ -167,17 +168,17 @@ jobs:
               echo "BODY:"
               cat /tmp/ingress-body.txt || true
               echo ""
-              echo "PUBLIC_HTTP_PROOF=http_200"
+              echo "PUBLIC_DNS_HTTP_PROOF=http_200"
               exit 0
             fi
 
             sleep 10
           done
 
-          echo "Public HTTP proof failed"
+          echo "Public DNS HTTP proof failed"
+          nslookup "$HOST" || true
           kubectl get ingress azproj-api -o wide || true
           kubectl describe ingress azproj-api || true
           kubectl get svc azproj-api -o wide || true
-          kubectl get endpoints azproj-api -o yaml || true
           kubectl -n ingress-nginx get svc ingress-nginx-controller -o wide || true
           exit 1

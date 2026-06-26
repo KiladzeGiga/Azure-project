@@ -105,7 +105,12 @@ Granted the AKS system-assigned identity `Network Contributor` on `rg-azproj-pro
 Update the app Helm chart to create an Ingress rule.
 
 Proof:
-- HTTP request reaches the app through the public IP/host.
+- `app-build-push` workflow succeeded.
+- App Helm chart now creates an Ingress resource.
+- Ingress routes public HTTP traffic through ingress-nginx to the `azproj-api` Service.
+- Public HTTP proof succeeded:
+  - `http://20.126.28.109/healthz`
+  - `PUBLIC_HTTP_PROOF=http_200`
 
 ### Phase 4 — Add DNS
 Point a DNS record to the ingress public IP.

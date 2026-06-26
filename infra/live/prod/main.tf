@@ -40,3 +40,11 @@ resource "azurerm_container_registry" "acr" {
   sku                 = "Basic"
   admin_enabled       = false
 }
+
+resource "azurerm_dns_a_record" "api" {
+  name                = "api"
+  zone_name           = "gkiladze.space"
+  resource_group_name = "rg-dns-lab"
+  ttl                 = 300
+  records             = [azurerm_public_ip.ingress.ip_address]
+}
