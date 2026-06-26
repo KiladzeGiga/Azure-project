@@ -97,7 +97,7 @@ jobs:
             --set ingress.enabled=true \
             --set ingress.host="api.gkiladze.space" \
             --set tls.enabled=true \
-            --set tls.email="YOUR_EMAIL_HERE" \
+            --set tls.email="gigakiladze@yahoo.com" \
             --wait --timeout 2m
 
       - name: Verify rollout
@@ -183,4 +183,40 @@ jobs:
           kubectl describe ingress azproj-api || true
           kubectl get svc azproj-api -o wide || true
           kubectl -n ingress-nginx get svc ingress-nginx-controller -o wide || true
+          exit 1
+          
+      - name: Prove staging HTTPS through ingress
+        run: |
+          set -e
+
+          HOST="api.gkiladze.space"
+          echo "Host: $HOST"
+
+          echo "---- cert-manager resources ----"
+          kubectl get clusterissuer
+          kubectl get certificate,certificaterequest,order,challenge -A || true
+
+          for i in {1..30}; do
+            STATUS=$(curl -k -sS -o /tmp/https-body.txt -w "%{http_code}" \
+              --connect-timeout 5 \
+              --max-time 15 \
+              "https://$HOST/healthz" || true)
+
+            echo "Attempt $i: HTTPS $STATUS"
+
+            if [ "$STATUS" = "200" ]; then
+              echo "BODY:"
+              cat /tmp/https-body.txt || true
+              echo ""
+              echo "PUBLIC_STAGING_HTTPS_PROOF=http_200"
+              exit 0
+            fi
+
+            kubectl get certificate,order,challenge -A || true
+            sleep 20
+          done
+
+          echo "Staging HTTPS proof failed"
+          kubectl describe ingress azproj-api || true
+          kubectl get certificate,certificaterequest,order,challenge -A || true
           exit 1
