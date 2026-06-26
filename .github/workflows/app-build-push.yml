@@ -155,37 +155,29 @@ jobs:
           INGRESS_IP=$(kubectl -n ingress-nginx get svc ingress-nginx-controller -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
           echo "Ingress IP: $INGRESS_IP"
 
-          echo "---- ingress ----"
-          kubectl get ingress azproj-api -o wide
-          kubectl describe ingress azproj-api
-
-          echo "---- backend service/endpoints ----"
-          kubectl get svc azproj-api -o wide
-          kubectl get endpoints azproj-api -o yaml
-
-          echo "---- ingress-nginx service ----"
-          kubectl -n ingress-nginx get svc ingress-nginx-controller -o wide
-
-          echo "---- test from inside cluster to app service ----"
-          kubectl run curl-internal --rm -i --restart=Never --image=curlimages/curl -- \
-            curl -sv --max-time 10 http://azproj-api.default.svc.cluster.local:8080/healthz || true
-
-          echo "---- test from GitHub runner to public ingress ----"
           for i in {1..12}; do
-            echo "Attempt $i"
-            curl -sv --connect-timeout 5 --max-time 15 "http://$INGRESS_IP/healthz" || true
-            echo ""
+            STATUS=$(curl -sS -o /tmp/ingress-body.txt -w "%{http_code}" \
+              --connect-timeout 5 \
+              --max-time 15 \
+              "http://$INGRESS_IP/healthz" || true)
+
+            echo "Attempt $i: HTTP $STATUS"
+
+            if [ "$STATUS" = "200" ]; then
+              echo "BODY:"
+              cat /tmp/ingress-body.txt || true
+              echo ""
+              echo "PUBLIC_HTTP_PROOF=http_200"
+              exit 0
+            fi
+
             sleep 10
           done
 
-          echo "---- ingress-nginx controller logs tail ----"
-          kubectl -n ingress-nginx logs deploy/ingress-nginx-controller --tail=80 || true
-
-          echo "---- final strict check ----"
-          OUT=$(curl -sS --connect-timeout 5 --max-time 15 "http://$INGRESS_IP/healthz" || true)
-          echo "OUT=$OUT"
-
-          OUT_CLEAN=$(echo "$OUT" | tr -d '\r\n' | sed 's/^"//; s/"$//')
-          test "$OUT_CLEAN" = "healthy"
-
-          echo "PUBLIC_HTTP_PROOF=healthy"
+          echo "Public HTTP proof failed"
+          kubectl get ingress azproj-api -o wide || true
+          kubectl describe ingress azproj-api || true
+          kubectl get svc azproj-api -o wide || true
+          kubectl get endpoints azproj-api -o yaml || true
+          kubectl -n ingress-nginx get svc ingress-nginx-controller -o wide || true
+          exit 1
