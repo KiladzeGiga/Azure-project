@@ -167,13 +167,13 @@ jobs:
 
             echo "Attempt $i: HTTP $STATUS"
 
-            if [ "$STATUS" = "200" ]; then
-              echo "BODY:"
-              cat /tmp/ingress-body.txt || true
-              echo ""
-              echo "PUBLIC_DNS_HTTP_PROOF=http_200"
-              exit 0
-            fi
+          if [ "$STATUS" = "200" ] || [ "$STATUS" = "308" ]; then
+            echo "BODY:"
+            cat /tmp/ingress-body.txt || true
+            echo ""
+            echo "PUBLIC_DNS_HTTP_PROOF=http_${STATUS}"
+            exit 0
+          fi
 
             sleep 10
           done
