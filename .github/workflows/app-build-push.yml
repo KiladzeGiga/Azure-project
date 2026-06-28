@@ -88,6 +88,40 @@ jobs:
 
       - name: Helm lint
         run: helm lint charts/azproj-api
+
+      - name: Start zero-downtime probe
+        run: |
+          set -e
+
+          HOST="api.gkiladze.space"
+          PROBE_LOG="/tmp/zero-downtime-probe.log"
+          PROBE_FAIL="/tmp/zero-downtime-failed"
+
+          rm -f "$PROBE_LOG" "$PROBE_FAIL"
+
+          (
+            for i in {1..120}; do
+              STATUS=$(curl -sS -o /tmp/zero-downtime-body.txt -w "%{http_code}" \
+                --connect-timeout 3 \
+                --max-time 5 \
+                "https://$HOST/healthz" || true)
+
+              TS=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+              echo "$TS attempt=$i status=$STATUS" | tee -a "$PROBE_LOG"
+
+              if [ "$STATUS" != "200" ]; then
+                echo "$TS failed with status=$STATUS" | tee -a "$PROBE_LOG"
+                touch "$PROBE_FAIL"
+              fi
+
+              sleep 2
+            done
+          ) &
+
+          echo $! > /tmp/zero-downtime-probe.pid
+
+          echo "Started zero-downtime probe:"
+          cat /tmp/zero-downtime-probe.pid
         
       - name: Helm deploy
         run: |
@@ -224,3 +258,34 @@ jobs:
           kubectl describe ingress azproj-api || true
           kubectl get certificate,certificaterequest,order,challenge -A || true
           exit 1
+          
+      - name: Verify zero-downtime probe
+        run: |
+          set -e
+
+          PROBE_LOG="/tmp/zero-downtime-probe.log"
+          PROBE_FAIL="/tmp/zero-downtime-failed"
+          PROBE_PID_FILE="/tmp/zero-downtime-probe.pid"
+
+          if [ -f "$PROBE_PID_FILE" ]; then
+            kill "$(cat "$PROBE_PID_FILE")" 2>/dev/null || true
+          fi
+
+          echo "---- zero-downtime probe log ----"
+          cat "$PROBE_LOG" || true
+
+          if [ -f "$PROBE_FAIL" ]; then
+            echo "ZERO_DOWNTIME_PROOF=failed"
+            exit 1
+          fi
+
+          SUCCESS_COUNT=$(grep -c "status=200" "$PROBE_LOG" || true)
+
+          echo "Successful requests: $SUCCESS_COUNT"
+
+          if [ "$SUCCESS_COUNT" -lt 5 ]; then
+            echo "Not enough successful requests captured during deployment"
+            exit 1
+          fi
+
+          echo "ZERO_DOWNTIME_PROOF=no_failed_requests"
