@@ -143,6 +143,13 @@ This allowed Azure Load Balancer health checks to succeed and traffic to reach i
 Install cert-manager and issue a certificate.
 
 Proof:
-- HTTPS works.
-- Certificate resource is Ready.
-- curl/browser confirms TLS.
+- cert-manager installed successfully.
+- Let’s Encrypt staging `ClusterIssuer` created successfully.
+- Ingress TLS enabled for:
+  - `api.gkiladze.space`
+- cert-manager created certificate:
+  - `azproj-api-tls`
+- HTTP now redirects to HTTPS:
+  - `PUBLIC_DNS_HTTP_PROOF=http_308`
+- Staging HTTPS proof succeeded:
+  - `PUBLIC_STAGING_HTTPS_PROOF=http_200`

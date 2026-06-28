@@ -12,8 +12,8 @@ ingress:
   pathType: Prefix
 tls:
   enabled: false
-  issuerName: letsencrypt-staging
-  issuerPrivateKeySecretName: letsencrypt-staging-account-key
+  issuerName: letsencrypt-prod
+  issuerPrivateKeySecretName: letsencrypt-prod-account-key
   email: ""
-  acmeServer: https://acme-staging-v02.api.letsencrypt.org/directory
+  acmeServer: https://acme-v02.api.letsencrypt.org/directory
   secretName: azproj-api-tls
