@@ -76,6 +76,18 @@ jobs:
             --set-string controller.service.annotations."service\.beta\.kubernetes\.io/azure-load-balancer-resource-group"="${{ steps.platform.outputs.aks_rg }}" \
             --set-string controller.service.annotations."service\.beta\.kubernetes\.io/azure-load-balancer-health-probe-request-path"="/healthz" \
             --wait --timeout 5m
+            
+      - name: Install cert-manager
+        run: |
+          helm repo add jetstack https://charts.jetstack.io
+          helm repo update
+
+          kubectl create namespace cert-manager --dry-run=client -o yaml | kubectl apply -f -
+
+          helm upgrade --install cert-manager jetstack/cert-manager \
+            -n cert-manager \
+            --set crds.enabled=true \
+            --wait --timeout 5m
 
       - name: Verify ingress-nginx
         run: |
@@ -103,6 +115,14 @@ jobs:
           kubectl -n ingress-nginx get svc ingress-nginx-controller -o wide
           kubectl -n ingress-nginx describe svc ingress-nginx-controller
           exit 1
+          
+      - name: Verify cert-manager
+        run: |
+          kubectl -n cert-manager rollout status deployment/cert-manager --timeout=180s
+          kubectl -n cert-manager rollout status deployment/cert-manager-webhook --timeout=180s
+          kubectl -n cert-manager rollout status deployment/cert-manager-cainjector --timeout=180s
+          kubectl -n cert-manager get pods
+          
       - name: Debug ingress-nginx service
         run: |
           echo "---- ingress-nginx service yaml ----"
