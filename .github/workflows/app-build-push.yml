@@ -276,6 +276,19 @@ jobs:
 
           if [ -f "$PROBE_FAIL" ]; then
             echo "ZERO_DOWNTIME_PROOF=failed"
+            
+            echo "---- deployment ----"
+            kubectl get deployment azproj-api -o wide || true
+            
+            echo "---- pods ----"
+            kubectl get pods -l app=azproj-api -o wide || true
+            
+            echo "---- endpoints ----"
+            kubectl get endpoints azproj-api -o yaml || true
+            
+            echo "---- recent events ----"
+            kubectl get events --sort-by=.lastTimestamp | tail -n 40 || true
+            
             exit 1
           fi
 
