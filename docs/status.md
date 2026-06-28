@@ -32,6 +32,7 @@ The platform currently supports:
 * cert-manager installed in the cluster.
 * Let’s Encrypt production TLS certificate issued automatically.
 * Public HTTPS proof for the API health endpoint.
+* Safer rolling deployments with readiness/liveness probes, graceful termination, and continuous public HTTPS proof.
 
 ## Current Public Endpoint
 
@@ -254,6 +255,7 @@ Updated the proof logic to accept HTTP `308` and added a separate HTTPS proof.
 * [x] Let’s Encrypt staging TLS proven.
 * [x] Let’s Encrypt production TLS proven.
 * [x] Public HTTPS endpoint proven.
+* [x] Zero-downtime deployment: deployment completes with no failed requests.
 
 ## Current Architecture
 
