@@ -6,6 +6,7 @@ metadata:
     app: azproj-api
 spec:
   replicas: {{ .Values.replicaCount }}
+  minReadySeconds: 10
   strategy:
     type: RollingUpdate
     rollingUpdate:
@@ -19,12 +20,17 @@ spec:
       labels:
         app: azproj-api
     spec:
+      terminationGracePeriodSeconds: 30
       containers:
         - name: azproj-api
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: {{ .Values.service.port }}
+          lifecycle:
+            preStop:
+              exec:
+                command: ["/bin/sh", "-c", "sleep 10"]
           readinessProbe:
             httpGet:
               path: {{ .Values.probes.path | quote }}
