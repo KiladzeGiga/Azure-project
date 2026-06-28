@@ -153,3 +153,19 @@ Proof:
   - `PUBLIC_DNS_HTTP_PROOF=http_308`
 - Staging HTTPS proof succeeded:
   - `PUBLIC_STAGING_HTTPS_PROOF=http_200`
+  
+### Phase 6 — Switched TLS to production
+Switched TLS from staging to production.
+
+Proof:
+- Switched TLS from Let’s Encrypt staging to Let’s Encrypt production.
+- Production `ClusterIssuer` created:
+  - `letsencrypt-prod`
+- Production ACME server configured:
+  - `https://acme-v02.api.letsencrypt.org/directory`
+- Ingress TLS enabled for:
+  - `api.gkiladze.space`
+- Production HTTPS proof succeeded:
+  - `https://api.gkiladze.space/healthz`
+  - `PUBLIC_PROD_HTTPS_PROOF=http_200`
+- HTTPS works without `curl -k`.
