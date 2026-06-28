@@ -174,6 +174,27 @@ Client
   * `PUBLIC_PROD_HTTPS_PROOF=http_200`
 * HTTPS works without `curl -k`.
 
+## Proof — Week 05
+
+- Added deployment safety settings to the Helm chart:
+  - `replicaCount: 2`
+  - `readinessProbe`
+  - `livenessProbe`
+  - rolling update strategy:
+    - `maxUnavailable: 0`
+    - `maxSurge: 1`
+  - `PodDisruptionBudget`
+  - `minReadySeconds: 10`
+  - graceful shutdown with `preStop` delay
+  - `terminationGracePeriodSeconds: 30`
+- Added continuous public HTTPS probe during deployment.
+- Initial zero-downtime proof found a real rollout gap:
+  - one request returned `status=000`
+- Fixed rollout behavior with readiness/graceful termination settings.
+- Final app deployment succeeded.
+- Zero-downtime proof succeeded:
+  - `ZERO_DOWNTIME_PROOF=no_failed_requests`
+
 ## Issues Found and Fixed
 
 ### AKS could not bind Terraform-created public IP
