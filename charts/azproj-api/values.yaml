@@ -1,19 +1,39 @@
+replicaCount: 2
+
 image:
   repository: ""
   tag: ""
-replicaCount: 1
+
 service:
   port: 8080
+
 ingress:
   enabled: true
   className: nginx
-  host: ""
+  host: api.gkiladze.space
   path: /
   pathType: Prefix
+
 tls:
-  enabled: false
+  enabled: true
   issuerName: letsencrypt-prod
   issuerPrivateKeySecretName: letsencrypt-prod-account-key
   email: ""
   acmeServer: https://acme-v02.api.letsencrypt.org/directory
   secretName: azproj-api-tls
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 500m
+    memory: 256Mi
+
+probes:
+  path: /healthz
+  port: 8080
+  initialDelaySeconds: 10
+  periodSeconds: 10
+  timeoutSeconds: 3
+  failureThreshold: 3

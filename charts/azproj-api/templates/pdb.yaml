@@ -1,0 +1,11 @@
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: azproj-api
+  labels:
+    app: azproj-api
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: azproj-api
