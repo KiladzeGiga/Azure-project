@@ -285,7 +285,7 @@ The project is not complete until these are proven:
 
 * [x] Public HTTPS endpoint works with valid production TLS.
 * [ ] Autoscaling: HPA scales the app under load.
-* [ ] Zero-downtime deployment: deployment completes with no failed requests.
+* [x] Zero-downtime deployment: deployment completes with no failed requests.
 * [ ] Observability: logs/metrics/traces can be used to debug a real failure.
 * [ ] Operational runbook exists for common failure scenarios.
 
