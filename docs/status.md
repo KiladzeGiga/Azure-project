@@ -10,7 +10,7 @@
 
 ## Current Milestone
 
-* **Milestone:** Week 04 — Public HTTPS ingress
+* **Milestone:** Week 06 — autoscaling
 * **Status:** ✅ Done
 
 ## Current Platform Capabilities
@@ -33,6 +33,7 @@ The platform currently supports:
 * Let’s Encrypt production TLS certificate issued automatically.
 * Public HTTPS proof for the API health endpoint.
 * Safer rolling deployments with readiness/liveness probes, graceful termination, and continuous public HTTPS proof.
+* Horizontal autoscaling with HPA, CPU metrics, controlled load generation, and scale-up/scale-down proof.
 
 ## Current Public Endpoint
 
@@ -234,6 +235,37 @@ The HTTP proof expected `200`, but after TLS was enabled, HTTP returned `308` re
 **Fix:**
 Updated the proof logic to accept HTTP `308` and added a separate HTTPS proof.
 
+## Proof — Week 06
+
+- Added HorizontalPodAutoscaler for `azproj-api`.
+- HPA configuration:
+  - min replicas: `2`
+  - max replicas: `6`
+  - CPU target: `50%`
+- Confirmed HPA was created by Helm:
+  - `kubectl get hpa`
+- Confirmed CPU metrics were available:
+  - initial metric: `cpu: 4%/50%`
+- Added `/cpu` endpoint to generate controlled CPU load.
+- Generated load from inside the cluster using a temporary `load-generator` pod.
+- HPA detected increased CPU usage and scaled the deployment automatically:
+  - before load: `cpu: 7%/50%`, replicas `2`
+  - during load: `cpu: 224%/50%`, replicas `2`
+  - scaled up: replicas `2 → 4 → 6`
+  - sustained load: `cpu: 206%/50%`, replicas `6`
+- After stopping the load, CPU dropped and HPA scaled the deployment back down:
+  - after load: `cpu: 1%/50%`
+  - scaled down: replicas `6 → 5 → 2`
+- Final state verified:
+  - `kubectl get hpa`: `cpu: 1%/50%`, replicas `2`
+  - `kubectl get deployment azproj-api`: `READY 2/2`, `AVAILABLE 2`
+
+Autoscaling proof succeeded:
+- `azproj-api` scaled from `2` replicas to `6` replicas under CPU load.
+- After the load stopped, it scaled back down to `2` replicas.
+- Metrics-server/HPA metrics were working.
+- Deployment returned to the expected healthy baseline.
+
 ## What’s Done
 
 * [x] Remote Terraform state in Azure Storage.
@@ -284,7 +316,7 @@ Updated the proof logic to accept HTTP `308` and added a separate HTTPS proof.
 The project is not complete until these are proven:
 
 * [x] Public HTTPS endpoint works with valid production TLS.
-* [ ] Autoscaling: HPA scales the app under load.
+* [x] Autoscaling: HPA scales the app under load.
 * [x] Zero-downtime deployment: deployment completes with no failed requests.
 * [ ] Observability: logs/metrics/traces can be used to debug a real failure.
 * [ ] Operational runbook exists for common failure scenarios.
