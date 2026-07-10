@@ -136,6 +136,10 @@ jobs:
             --set tls.issuerPrivateKeySecretName="letsencrypt-prod-account-key" \
             --set tls.acmeServer="https://acme-v02.api.letsencrypt.org/directory" \
             --set tls.email="gigakiladze@yahoo.com" \
+            --set autoscaling.enabled=true \
+            --set autoscaling.minReplicas=2 \
+            --set autoscaling.maxReplicas=6 \
+            --set autoscaling.targetCPUUtilizationPercentage=50 \
             --wait --timeout 2m
 
       - name: Verify rollout
@@ -143,6 +147,11 @@ jobs:
           kubectl rollout status deploy/azproj-api --timeout=120s
           kubectl get pods -l app=azproj-api
           kubectl get svc azproj-api
+          
+      - name: Verify HPA exists
+        run: |
+          kubectl get hpa azproj-api
+          kubectl describe hpa azproj-api
 
       - name: Prove /healthz from inside cluster
         run: |

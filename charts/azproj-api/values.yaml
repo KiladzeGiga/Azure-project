@@ -37,3 +37,9 @@ probes:
   periodSeconds: 10
   timeoutSeconds: 3
   failureThreshold: 3
+  
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 6
+  targetCPUUtilizationPercentage: 50
