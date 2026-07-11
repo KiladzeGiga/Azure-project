@@ -57,6 +57,36 @@ jobs:
             -backend-config="key=prod.terraform.tfstate" \
             -backend-config="use_azuread_auth=true"
 
+      - name: Pre-destroy Kubernetes cleanup
+        run: |
+          set +e
+
+          AKS_NAME=$(terraform output -raw aks_name 2>/dev/null)
+          AKS_RG=$(terraform output -raw aks_rg 2>/dev/null)
+
+          if [ -z "$AKS_NAME" ] || [ -z "$AKS_RG" ]; then
+            echo "AKS outputs not available. Skipping Kubernetes cleanup."
+            exit 0
+          fi
+
+          echo "Getting AKS credentials for $AKS_NAME in $AKS_RG..."
+          az aks get-credentials \
+            -g "$AKS_RG" \
+            -n "$AKS_NAME" \
+            --admin \
+            --overwrite-existing
+
+          echo "Deleting ingress-nginx LoadBalancer Service if it exists..."
+          kubectl -n ingress-nginx delete svc ingress-nginx-controller --ignore-not-found=true
+
+          echo "Deleting ingress-nginx namespace if it exists..."
+          kubectl delete namespace ingress-nginx --ignore-not-found=true
+
+          echo "Waiting briefly for Azure Load Balancer detach..."
+          sleep 60
+
+          set -e
+
       - name: terraform destroy plan
         run: terraform plan -destroy -out=destroy.tfplan
 
