@@ -96,8 +96,28 @@ jobs:
           HOST="api.gkiladze.space"
           PROBE_LOG="/tmp/zero-downtime-probe.log"
           PROBE_FAIL="/tmp/zero-downtime-failed"
+          PROBE_SKIP="/tmp/zero-downtime-skipped"
 
-          rm -f "$PROBE_LOG" "$PROBE_FAIL"
+          rm -f "$PROBE_LOG" "$PROBE_FAIL" "$PROBE_SKIP"
+
+          echo "Checking whether public HTTPS endpoint is already healthy before rollout..."
+
+          BASELINE_STATUS=$(curl -sS -o /tmp/baseline-body.txt -w "%{http_code}" \
+            --connect-timeout 5 \
+            --max-time 10 \
+            "https://$HOST/healthz" || true)
+
+          echo "Baseline HTTPS status: $BASELINE_STATUS"
+
+          if [ "$BASELINE_STATUS" != "200" ]; then
+            echo "No healthy pre-existing public endpoint."
+            echo "This is likely first deploy after destroy/recreate."
+            echo "Skipping zero-downtime rollout probe for this run."
+            touch "$PROBE_SKIP"
+            exit 0
+          fi
+
+          echo "Existing endpoint is healthy. Starting zero-downtime rollout probe."
 
           (
             for i in {1..120}; do
@@ -274,7 +294,14 @@ jobs:
 
           PROBE_LOG="/tmp/zero-downtime-probe.log"
           PROBE_FAIL="/tmp/zero-downtime-failed"
+          PROBE_SKIP="/tmp/zero-downtime-skipped"
           PROBE_PID_FILE="/tmp/zero-downtime-probe.pid"
+
+          if [ -f "$PROBE_SKIP" ]; then
+            echo "ZERO_DOWNTIME_PROOF=skipped_first_deploy_after_destroy"
+            echo "Reason: no healthy public HTTPS endpoint existed before deployment."
+            exit 0
+          fi
 
           if [ -f "$PROBE_PID_FILE" ]; then
             kill "$(cat "$PROBE_PID_FILE")" 2>/dev/null || true
@@ -283,27 +310,32 @@ jobs:
           echo "---- zero-downtime probe log ----"
           cat "$PROBE_LOG" || true
 
-          if [ -f "$PROBE_FAIL" ]; then
-            echo "ZERO_DOWNTIME_PROOF=failed"
-            
-            echo "---- deployment ----"
-            kubectl get deployment azproj-api -o wide || true
-            
-            echo "---- pods ----"
-            kubectl get pods -l app=azproj-api -o wide || true
-            
-            echo "---- endpoints ----"
-            kubectl get endpoints azproj-api -o yaml || true
-            
-            echo "---- recent events ----"
-            kubectl get events --sort-by=.lastTimestamp | tail -n 40 || true
-            
-            exit 1
-          fi
+          echo "---- non-200 responses ----"
+          grep -v "status=200" "$PROBE_LOG" || true
 
           SUCCESS_COUNT=$(grep -c "status=200" "$PROBE_LOG" || true)
+          FAILURE_COUNT=$(grep -c "failed with status=" "$PROBE_LOG" || true)
 
           echo "Successful requests: $SUCCESS_COUNT"
+          echo "Failed requests: $FAILURE_COUNT"
+
+          if [ -f "$PROBE_FAIL" ]; then
+            echo "ZERO_DOWNTIME_PROOF=failed"
+
+            echo "---- deployment ----"
+            kubectl get deployment azproj-api -o wide || true
+
+            echo "---- pods ----"
+            kubectl get pods -l app=azproj-api -o wide || true
+
+            echo "---- endpoints ----"
+            kubectl get endpoints azproj-api -o yaml || true
+
+            echo "---- recent events ----"
+            kubectl get events --sort-by=.lastTimestamp | tail -n 40 || true
+
+            exit 1
+          fi
 
           if [ "$SUCCESS_COUNT" -lt 5 ]; then
             echo "Not enough successful requests captured during deployment"
