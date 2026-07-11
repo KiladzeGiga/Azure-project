@@ -1,4 +1,4 @@
-name: Terraform Destroy
+name: terraform-destroy
 
 on:
   workflow_dispatch:
@@ -16,45 +16,81 @@ concurrency:
   group: prod-terraform
   cancel-in-progress: false
 
+defaults:
+  run:
+    shell: bash
+    working-directory: infra/live/prod
+
 jobs:
   destroy:
-    name: Destroy prod infrastructure
     runs-on: ubuntu-latest
     environment: prod
 
     if: github.event.inputs.confirm_destroy == 'DESTROY'
 
-    defaults:
-      run:
-        working-directory: infra/live/prod
-
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Azure login
-        uses: azure/login@v2
+      - name: Show Azure IDs
+        run: |
+          echo "AZURE_TENANT_ID=${{ vars.AZURE_TENANT_ID }}"
+          echo "AZURE_SUBSCRIPTION_ID=${{ vars.AZURE_SUBSCRIPTION_ID }}"
+          echo "AZURE_CLIENT_ID_APPLY=${{ vars.AZURE_CLIENT_ID_APPLY }}"
+          echo "TFSTATE_RG=${{ vars.TFSTATE_RG }}"
+          echo "TFSTATE_SA=${{ vars.TFSTATE_SA }}"
+          echo "TFSTATE_CONTAINER=${{ vars.TFSTATE_CONTAINER }}"
+
+      - uses: azure/login@v2
         with:
-          client-id: ${{ secrets.AZURE_APPLY_CLIENT_ID }}
-          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          client-id: ${{ vars.AZURE_CLIENT_ID_APPLY }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
 
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
+      - uses: hashicorp/setup-terraform@v3
 
-      - name: Terraform init
+      - name: terraform init
         run: |
           terraform init \
-            -backend-config="resource_group_name=rg-azproj-tfstate" \
-            -backend-config="storage_account_name=stazprojbn0pn1" \
-            -backend-config="container_name=tfstate" \
+            -backend-config="resource_group_name=${{ vars.TFSTATE_RG }}" \
+            -backend-config="storage_account_name=${{ vars.TFSTATE_SA }}" \
+            -backend-config="container_name=${{ vars.TFSTATE_CONTAINER }}" \
             -backend-config="key=prod.terraform.tfstate" \
             -backend-config="use_azuread_auth=true"
 
-      - name: Terraform destroy plan
+      - name: Pre-destroy Kubernetes cleanup
+        run: |
+          set +e
+
+          AKS_NAME=$(terraform output -raw aks_name 2>/dev/null)
+          AKS_RG=$(terraform output -raw aks_rg 2>/dev/null)
+
+          if [ -z "$AKS_NAME" ] || [ -z "$AKS_RG" ]; then
+            echo "AKS outputs not available. Skipping Kubernetes cleanup."
+            exit 0
+          fi
+
+          echo "Getting AKS credentials for $AKS_NAME in $AKS_RG..."
+          az aks get-credentials \
+            -g "$AKS_RG" \
+            -n "$AKS_NAME" \
+            --admin \
+            --overwrite-existing
+
+          echo "Deleting ingress-nginx LoadBalancer Service if it exists..."
+          kubectl -n ingress-nginx delete svc ingress-nginx-controller --ignore-not-found=true
+
+          echo "Deleting ingress-nginx namespace if it exists..."
+          kubectl delete namespace ingress-nginx --ignore-not-found=true
+
+          echo "Waiting briefly for Azure Load Balancer detach..."
+          sleep 60
+
+          set -e
+
+      - name: terraform destroy plan
         run: terraform plan -destroy -out=destroy.tfplan
 
-      - name: Terraform destroy apply
+      - name: terraform destroy apply
         run: terraform apply -auto-approve destroy.tfplan
 
       - name: Verify prod resource group removed
