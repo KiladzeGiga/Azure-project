@@ -25,6 +25,9 @@ spec:
         - name: azproj-api
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
           imagePullPolicy: IfNotPresent
+          env:
+            - name: APP_VERSION
+              value: {{ .Values.image.tag | quote }}
           ports:
             - containerPort: {{ .Values.service.port }}
           lifecycle:
