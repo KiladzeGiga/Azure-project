@@ -8,173 +8,178 @@ on:
         required: true
         type: string
 
-  permissions:
-    id-token: write
-    contents: read
-  
-  concurrency:
-    group: prod-app
-    cancel-in-progress: false
-  
-  defaults:
-    run:
-      shell: bash
-      working-directory: .
-  
-  jobs:
-    readiness-failure:
-      runs-on: ubuntu-latest
-      environment: prod
-  
-      if: github.event.inputs.confirm == 'RUN'
-  
-      steps:
-        - uses: actions/checkout@v4
-  
-        - uses: azure/login@v2
-          with:
-            client-id: ${{ vars.AZURE_CLIENT_ID_APPLY }}
-            tenant-id: ${{ vars.AZURE_TENANT_ID }}
-            subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
-  
-        - uses: hashicorp/setup-terraform@v3
-  
-        - name: Terraform init
-          working-directory: infra/live/prod
-          run: |
-            terraform init \
-              -backend-config="resource_group_name=${{ vars.TFSTATE_RG }}" \
-              -backend-config="storage_account_name=${{ vars.TFSTATE_SA }}" \
-              -backend-config="container_name=${{ vars.TFSTATE_CONTAINER }}" \
-              -backend-config="key=prod.terraform.tfstate" \
-              -backend-config="use_azuread_auth=true"
-  
-        - name: Get AKS credentials
-          working-directory: infra/live/prod
-          run: |
-            AKS_NAME=$(terraform output -raw aks_name)
-            AKS_RG=$(terraform output -raw aks_rg)
-  
-            az aks get-credentials \
-              -g "$AKS_RG" \
-              -n "$AKS_NAME" \
-              --admin \
-              --overwrite-existing
-  
-        - name: Verify baseline healthy
-          run: |
-            set -e
-  
-            echo "---- baseline deployment ----"
-            kubectl rollout status deployment/azproj-api --timeout=180s
-            kubectl get pods -l app=azproj-api -o wide
-  
-            STATUS=$(curl -sS -o /tmp/baseline-body.txt -w "%{http_code}" \
-              --connect-timeout 5 \
-              --max-time 15 \
-              "https://api.gkiladze.space/healthz" || true)
-  
-            echo "Baseline public HTTPS status: $STATUS"
-            cat /tmp/baseline-body.txt || true
-            echo ""
-  
-            if [ "$STATUS" != "200" ]; then
-              echo "Baseline is not healthy. Refusing to run controlled failure."
-              exit 1
-            fi
-  
-        - name: Save current deployment
-          run: |
-            kubectl get deployment azproj-api -o yaml > /tmp/azproj-api-before-failure.yaml
-  
-        - name: Apply controlled bad readiness patch
-          run: |
-            set -e
-  
-            kubectl patch deployment azproj-api --type='json' -p='[
-              {
-                "op": "replace",
-                "path": "/spec/template/spec/containers/0/readinessProbe/httpGet/path",
-                "value": "/bad-readiness-path"
-              }
-            ]'
-  
-            echo "CONTROLLED_FAILURE_PATCH=bad_readiness_path_applied"
-  
-        - name: Diagnose controlled readiness failure
-          run: |
-            set +e
-  
-            echo "CONTROLLED_FAILURE_DIAGNOSIS=started"
-  
-            echo "---- rollout status ----"
-            kubectl rollout status deployment/azproj-api --timeout=90s
-  
-            echo "---- deployment ----"
-            kubectl get deployment azproj-api -o wide
-  
-            echo "---- pods ----"
-            kubectl get pods -l app=azproj-api -o wide
-  
-            echo "---- describe pods ----"
-            kubectl describe pods -l app=azproj-api
-  
-            echo "---- endpoints ----"
-            kubectl get endpoints azproj-api -o yaml
-  
-            echo "---- recent events ----"
-            kubectl get events --sort-by=.lastTimestamp | tail -n 80
-  
-            echo "---- public HTTPS should still work from old ready pods ----"
-            STATUS=$(curl -sS -o /tmp/controlled-failure-body.txt -w "%{http_code}" \
-              --connect-timeout 5 \
-              --max-time 15 \
-              "https://api.gkiladze.space/healthz" || true)
-  
-            echo "Public HTTPS status: $STATUS"
-            cat /tmp/controlled-failure-body.txt || true
-            echo ""
-  
-            if [ "$STATUS" = "200" ]; then
-              echo "CONTROLLED_FAILURE_PROOF=old_version_still_serving"
-            else
-              echo "CONTROLLED_FAILURE_PROOF=public_endpoint_failed"
-              exit 1
-            fi
-  
-        - name: Recover deployment
-          if: always()
-          run: |
-            set +e
-  
-            echo "---- restoring readiness path ----"
-            kubectl patch deployment azproj-api --type='json' -p='[
-              {
-                "op": "replace",
-                "path": "/spec/template/spec/containers/0/readinessProbe/httpGet/path",
-                "value": "/healthz"
-              }
-            ]'
-  
-            echo "---- waiting for recovery ----"
-            kubectl rollout status deployment/azproj-api --timeout=180s
-  
-            echo "---- recovered pods ----"
-            kubectl get pods -l app=azproj-api -o wide
-  
-            echo "---- recovered public HTTPS ----"
-            STATUS=$(curl -sS -o /tmp/recovered-body.txt -w "%{http_code}" \
-              --connect-timeout 5 \
-              --max-time 15 \
-              "https://api.gkiladze.space/healthz" || true)
-  
-            echo "Recovered public HTTPS status: $STATUS"
-            cat /tmp/recovered-body.txt || true
-            echo ""
-  
-            if [ "$STATUS" = "200" ]; then
-              echo "CONTROLLED_FAILURE_RECOVERY=recovered"
-            else
-              echo "CONTROLLED_FAILURE_RECOVERY=failed"
-              exit 1
-            fi
+permissions:
+  id-token: write
+  contents: read
+
+concurrency:
+  group: prod-app
+  cancel-in-progress: false
+
+defaults:
+  run:
+    shell: bash
+    working-directory: .
+
+jobs:
+  readiness-failure:
+    runs-on: ubuntu-latest
+    environment: prod
+
+    if: github.event.inputs.confirm == 'RUN'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID_APPLY }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      - uses: hashicorp/setup-terraform@v3
+
+      - name: Terraform init
+        working-directory: infra/live/prod
+        run: |
+          terraform init \
+            -backend-config="resource_group_name=${{ vars.TFSTATE_RG }}" \
+            -backend-config="storage_account_name=${{ vars.TFSTATE_SA }}" \
+            -backend-config="container_name=${{ vars.TFSTATE_CONTAINER }}" \
+            -backend-config="key=prod.terraform.tfstate" \
+            -backend-config="use_azuread_auth=true"
+
+      - name: Get AKS credentials
+        working-directory: infra/live/prod
+        run: |
+          AKS_NAME=$(terraform output -raw aks_name)
+          AKS_RG=$(terraform output -raw aks_rg)
+
+          az aks get-credentials \
+            -g "$AKS_RG" \
+            -n "$AKS_NAME" \
+            --admin \
+            --overwrite-existing
+
+      - name: Verify baseline healthy
+        run: |
+          set -e
+
+          echo "---- baseline deployment ----"
+          kubectl rollout status deployment/azproj-api --timeout=180s
+          kubectl get pods -l app=azproj-api -o wide
+
+          STATUS=$(curl -sS -o /tmp/baseline-body.txt -w "%{http_code}" \
+            --connect-timeout 5 \
+            --max-time 15 \
+            "https://api.gkiladze.space/healthz" || true)
+
+          echo "Baseline public HTTPS status: $STATUS"
+          cat /tmp/baseline-body.txt || true
+          echo ""
+
+          if [ "$STATUS" != "200" ]; then
+            echo "Baseline is not healthy. Refusing to run controlled failure."
+            exit 1
+          fi
+
+      - name: Apply controlled bad readiness patch
+        run: |
+          set -e
+
+          kubectl patch deployment azproj-api --type='json' -p='[
+            {
+              "op": "replace",
+              "path": "/spec/template/spec/containers/0/readinessProbe/httpGet/path",
+              "value": "/bad-readiness-path"
+            }
+          ]'
+
+          echo "CONTROLLED_FAILURE_PATCH=bad_readiness_path_applied"
+
+      - name: Diagnose controlled readiness failure
+        run: |
+          set +e
+
+          echo "CONTROLLED_FAILURE_DIAGNOSIS=started"
+
+          echo "---- rollout status ----"
+          kubectl rollout status deployment/azproj-api --timeout=90s
+
+          echo "---- deployment ----"
+          kubectl get deployment azproj-api -o wide
+
+          echo "---- pods ----"
+          kubectl get pods -l app=azproj-api -o wide
+
+          echo "---- describe pods ----"
+          kubectl describe pods -l app=azproj-api
+
+          echo "---- endpoints ----"
+          kubectl get endpoints azproj-api -o yaml
+
+          echo "---- recent events ----"
+          kubectl get events --sort-by=.lastTimestamp | tail -n 80
+
+          echo "---- public HTTPS should still work from old ready pods ----"
+          STATUS=$(curl -sS -o /tmp/controlled-failure-body.txt -w "%{http_code}" \
+            --connect-timeout 5 \
+            --max-time 15 \
+            "https://api.gkiladze.space/healthz" || true)
+
+          echo "Public HTTPS status: $STATUS"
+          cat /tmp/controlled-failure-body.txt || true
+          echo ""
+
+          if [ "$STATUS" = "200" ]; then
+            echo "CONTROLLED_FAILURE_PROOF=old_version_still_serving"
+          else
+            echo "CONTROLLED_FAILURE_PROOF=public_endpoint_failed"
+            exit 1
+          fi
+
+      - name: Recover deployment
+        if: always()
+        run: |
+          set +e
+
+          echo "---- restoring readiness path ----"
+          kubectl patch deployment azproj-api --type='json' -p='[
+            {
+              "op": "replace",
+              "path": "/spec/template/spec/containers/0/readinessProbe/httpGet/path",
+              "value": "/healthz"
+            }
+          ]'
+
+          echo "---- waiting for recovery ----"
+          kubectl rollout status deployment/azproj-api --timeout=180s
+          RECOVERY_ROLLOUT_CODE=$?
+
+          echo "---- recovered pods ----"
+          kubectl get pods -l app=azproj-api -o wide || true
+
+          echo "---- verify no bad readiness path remains ----"
+          kubectl get deployment azproj-api -o yaml | grep -E "bad-readiness-path|/healthz" || true
+
+          echo "---- recovered public HTTPS ----"
+          STATUS=$(curl -sS -o /tmp/recovered-body.txt -w "%{http_code}" \
+            --connect-timeout 5 \
+            --max-time 15 \
+            "https://api.gkiladze.space/healthz" || true)
+
+          echo "Recovered public HTTPS status: $STATUS"
+          cat /tmp/recovered-body.txt || true
+          echo ""
+
+          if [ "$RECOVERY_ROLLOUT_CODE" -ne 0 ]; then
+            echo "CONTROLLED_FAILURE_RECOVERY=rollout_failed"
+            exit 1
+          fi
+
+          if [ "$STATUS" = "200" ]; then
+            echo "CONTROLLED_FAILURE_RECOVERY=recovered"
+          else
+            echo "CONTROLLED_FAILURE_RECOVERY=failed"
+            exit 1
+          fi
