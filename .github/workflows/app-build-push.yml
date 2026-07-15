@@ -164,8 +164,11 @@ jobs:
             echo "CONTROLLED_FAILURE_TEST=disabled"
           fi        
         
-      - name: Helm deploy
+      - name: Helm deploy controlled bad readiness
+        if: ${{ github.event.inputs.bad_readiness_test == 'true' }}
         run: |
+          set +e
+
           helm upgrade --install azproj-api charts/azproj-api \
             --reset-values \
             --set image.repository="${{ steps.acr.outputs.acr_login_server }}/azproj-api" \
@@ -181,8 +184,19 @@ jobs:
             --set autoscaling.minReplicas=2 \
             --set autoscaling.maxReplicas=6 \
             --set autoscaling.targetCPUUtilizationPercentage=50 \
-            --set probes.path="${{ steps.failure_test.outputs.probe_path }}" \
+            --set probes.path="/bad-readiness-path" \
             --wait --timeout 2m
+
+          HELM_EXIT=$?
+          echo "HELM_EXIT=$HELM_EXIT"
+
+          if [ "$HELM_EXIT" -eq 0 ]; then
+            echo "Expected Helm to fail because readiness path is intentionally bad, but it succeeded."
+            exit 1
+          fi
+
+          echo "Helm failed as expected for controlled bad readiness test."
+          exit 0
 
       - name: Verify rollout
         if: ${{ github.event.inputs.bad_readiness_test != 'true' }}
