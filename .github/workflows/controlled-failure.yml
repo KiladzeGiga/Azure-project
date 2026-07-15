@@ -87,7 +87,7 @@ jobs:
         run: |
           set -e
 
-          kubectl patch deployment azproj-api --type='json' -p='[
+          kubectl patch deployment azproj-api --field-manager=controlled-failure --type='json' -p='[
             {
               "op": "replace",
               "path": "/spec/template/spec/containers/0/readinessProbe/httpGet/path",
@@ -144,7 +144,7 @@ jobs:
           set +e
 
           echo "---- restoring readiness path ----"
-          kubectl patch deployment azproj-api --type='json' -p='[
+          kubectl patch deployment azproj-api --field-manager=controlled-failure --type='json' -p='[
             {
               "op": "replace",
               "path": "/spec/template/spec/containers/0/readinessProbe/httpGet/path",
