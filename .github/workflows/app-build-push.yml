@@ -7,7 +7,17 @@ on:
       - "app/**"
       - "charts/**"
       - ".github/workflows/app-build-push.yml"
+
   workflow_dispatch:
+    inputs:
+      bad_readiness_test:
+        description: "Intentionally deploy bad readiness probe path"
+        required: false
+        default: "false"
+        type: choice
+        options:
+          - "false"
+          - "true"
 
 permissions:
   id-token: write
@@ -143,6 +153,17 @@ jobs:
           echo "Started zero-downtime probe:"
           cat /tmp/zero-downtime-probe.pid
         
+      - name: Set controlled failure options
+        id: failure_test
+        run: |
+          if [ "${{ github.event.inputs.bad_readiness_test }}" = "true" ]; then
+            echo "probe_path=/bad-readiness-path" >> "$GITHUB_OUTPUT"
+            echo "CONTROLLED_FAILURE_TEST=enabled"
+          else
+            echo "probe_path=/healthz" >> "$GITHUB_OUTPUT"
+            echo "CONTROLLED_FAILURE_TEST=disabled"
+          fi        
+        
       - name: Helm deploy
         run: |
           helm upgrade --install azproj-api charts/azproj-api \
@@ -160,13 +181,60 @@ jobs:
             --set autoscaling.minReplicas=2 \
             --set autoscaling.maxReplicas=6 \
             --set autoscaling.targetCPUUtilizationPercentage=50 \
+            --set probes.path="${{ steps.failure_test.outputs.probe_path }}" \
             --wait --timeout 2m
 
       - name: Verify rollout
+        if: ${{ github.event.inputs.bad_readiness_test != 'true' }}
         run: |
           kubectl rollout status deploy/azproj-api --timeout=120s
           kubectl get pods -l app=azproj-api
           kubectl get svc azproj-api
+          
+      - name: Diagnose controlled readiness failure
+        if: ${{ github.event.inputs.bad_readiness_test == 'true' }}
+        run: |
+          set +e
+
+          echo "CONTROLLED_FAILURE_DIAGNOSIS=started"
+
+          echo "---- rollout status ----"
+          kubectl rollout status deployment/azproj-api --timeout=60s
+
+          echo "---- deployment ----"
+          kubectl get deployment azproj-api -o wide
+
+          echo "---- pods ----"
+          kubectl get pods -l app=azproj-api -o wide
+
+          echo "---- describe pods ----"
+          kubectl describe pods -l app=azproj-api
+
+          echo "---- endpoints ----"
+          kubectl get endpoints azproj-api -o yaml
+
+          echo "---- recent events ----"
+          kubectl get events --sort-by=.lastTimestamp | tail -n 80
+
+          echo "---- public HTTPS should still work from old ready pods ----"
+          STATUS=$(curl -sS -o /tmp/controlled-failure-body.txt -w "%{http_code}" \
+            --connect-timeout 5 \
+            --max-time 15 \
+            "https://api.gkiladze.space/healthz" || true)
+
+          echo "Public HTTPS status: $STATUS"
+          cat /tmp/controlled-failure-body.txt || true
+          echo ""
+
+          if [ "$STATUS" = "200" ]; then
+            echo "CONTROLLED_FAILURE_PROOF=old_version_still_serving"
+          else
+            echo "CONTROLLED_FAILURE_PROOF=public_endpoint_failed"
+            exit 1
+          fi
+
+          echo "This workflow is expected to fail during bad_readiness_test=true."
+          exit 1
           
       - name: Verify HPA exists
         run: |
