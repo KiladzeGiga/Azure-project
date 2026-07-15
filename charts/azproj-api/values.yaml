@@ -31,9 +31,9 @@ resources:
     memory: 256Mi
 
 probes:
-  path: /healthz
+  readinessPath: /healthz
+  livenessPath: /healthz
   port: 8080
-  initialDelaySeconds: 10
   periodSeconds: 10
   timeoutSeconds: 3
   failureThreshold: 3
