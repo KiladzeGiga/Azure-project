@@ -7,367 +7,365 @@ on:
       - "app/**"
       - "charts/**"
       - ".github/workflows/app-build-push.yml"
-  
-  workflow_dispatch:
-  
-  permissions:
-    id-token: write
-    contents: read
-  
-  concurrency:
-    group: prod-app
-    cancel-in-progress: false
-  
-  jobs:
-    build_push:
-      runs-on: ubuntu-latest
-      environment: prod
 
-  ```
-  steps:
-    - uses: actions/checkout@v4
-  
-    - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v3
-  
-    - name: Azure login (OIDC)
-      uses: azure/login@v2
-      with:
-        client-id: ${{ vars.AZURE_CLIENT_ID_APPLY }}
-        tenant-id: ${{ vars.AZURE_TENANT_ID }}
-        subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
-  
-    - name: Setup Terraform
-      uses: hashicorp/setup-terraform@v3
-  
-    - name: Terraform init (backend)
-      working-directory: infra/live/prod
-      run: |
-        terraform init \
-          -backend-config="resource_group_name=${{ vars.TFSTATE_RG }}" \
-          -backend-config="storage_account_name=${{ vars.TFSTATE_SA }}" \
-          -backend-config="container_name=${{ vars.TFSTATE_CONTAINER }}" \
-          -backend-config="key=prod.terraform.tfstate" \
-          -backend-config="use_azuread_auth=true"
-  
-    - name: Read ACR outputs
-      id: acr
-      working-directory: infra/live/prod
-      run: |
-        echo "acr_name=$(terraform output -raw acr_name)" >> "$GITHUB_OUTPUT"
-        echo "acr_login_server=$(terraform output -raw acr_login_server)" >> "$GITHUB_OUTPUT"
-  
-    - name: ACR login
-      run: |
-        az acr login --name "${{ steps.acr.outputs.acr_name }}"
-  
-    - name: Build and push
-      run: |
-        IMAGE="${{ steps.acr.outputs.acr_login_server }}/azproj-api:${{ github.sha }}"
-        echo "IMAGE=$IMAGE" >> "$GITHUB_ENV"
-        docker build -t "$IMAGE" -f app/Dockerfile app
-        docker push "$IMAGE"
-  
-    - name: Show image
-      run: echo "${{ env.IMAGE }}"
-  
-    - name: Read AKS outputs
-      id: aks
-      working-directory: infra/live/prod
-      run: |
-        echo "aks_name=$(terraform output -raw aks_name)" >> "$GITHUB_OUTPUT"
-        echo "aks_rg=$(terraform output -raw aks_rg)" >> "$GITHUB_OUTPUT"
-  
-    - name: Setup kubectl
-      uses: azure/setup-kubectl@v4
-  
-    - name: Setup helm
-      uses: azure/setup-helm@v4
-  
-    - name: Get AKS credentials (admin)
-      run: |
-        az aks get-credentials \
-          -g "${{ steps.aks.outputs.aks_rg }}" \
-          -n "${{ steps.aks.outputs.aks_name }}" \
-          --admin \
-          --overwrite-existing
-  
-    - name: Helm lint
-      run: helm lint charts/azproj-api
-  
-    - name: Start zero-downtime probe
-      run: |
-        set -e
-  
-        HOST="api.gkiladze.space"
-        PROBE_LOG="/tmp/zero-downtime-probe.log"
-        PROBE_FAIL="/tmp/zero-downtime-failed"
-        PROBE_SKIP="/tmp/zero-downtime-skipped"
-  
-        rm -f "$PROBE_LOG" "$PROBE_FAIL" "$PROBE_SKIP"
-  
-        echo "Checking whether public HTTPS endpoint is already healthy before rollout..."
-  
-        BASELINE_STATUS=$(curl -sS -o /tmp/baseline-body.txt -w "%{http_code}" \
-          --connect-timeout 5 \
-          --max-time 10 \
-          "https://$HOST/healthz" || true)
-  
-        echo "Baseline HTTPS status: $BASELINE_STATUS"
-  
-        if [ "$BASELINE_STATUS" != "200" ]; then
-          echo "No healthy pre-existing public endpoint."
-          echo "This is likely first deploy after destroy/recreate."
-          echo "Skipping zero-downtime rollout probe for this run."
-          touch "$PROBE_SKIP"
-          exit 0
-        fi
-  
-        echo "Existing endpoint is healthy. Starting zero-downtime rollout probe."
-  
-        (
-          for i in {1..120}; do
-            STATUS=$(curl -sS -o /tmp/zero-downtime-body.txt -w "%{http_code}" \
-              --connect-timeout 3 \
-              --max-time 5 \
-              "https://$HOST/healthz" || true)
-  
-            TS=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
-            echo "$TS attempt=$i status=$STATUS" | tee -a "$PROBE_LOG"
-  
-            if [ "$STATUS" != "200" ]; then
-              echo "$TS failed with status=$STATUS" | tee -a "$PROBE_LOG"
-              touch "$PROBE_FAIL"
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+concurrency:
+  group: prod-app
+  cancel-in-progress: false
+
+jobs:
+  build_push:
+    runs-on: ubuntu-latest
+    environment: prod
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Azure login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID_APPLY }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Terraform init (backend)
+        working-directory: infra/live/prod
+        run: |
+          terraform init \
+            -backend-config="resource_group_name=${{ vars.TFSTATE_RG }}" \
+            -backend-config="storage_account_name=${{ vars.TFSTATE_SA }}" \
+            -backend-config="container_name=${{ vars.TFSTATE_CONTAINER }}" \
+            -backend-config="key=prod.terraform.tfstate" \
+            -backend-config="use_azuread_auth=true"
+
+      - name: Read ACR outputs
+        id: acr
+        working-directory: infra/live/prod
+        run: |
+          echo "acr_name=$(terraform output -raw acr_name)" >> "$GITHUB_OUTPUT"
+          echo "acr_login_server=$(terraform output -raw acr_login_server)" >> "$GITHUB_OUTPUT"
+
+      - name: ACR login
+        run: |
+          az acr login --name "${{ steps.acr.outputs.acr_name }}"
+
+      - name: Build and push
+        run: |
+          IMAGE="${{ steps.acr.outputs.acr_login_server }}/azproj-api:${{ github.sha }}"
+          echo "IMAGE=$IMAGE" >> "$GITHUB_ENV"
+          docker build -t "$IMAGE" -f app/Dockerfile app
+          docker push "$IMAGE"
+
+      - name: Show image
+        run: echo "${{ env.IMAGE }}"
+
+      - name: Read AKS outputs
+        id: aks
+        working-directory: infra/live/prod
+        run: |
+          echo "aks_name=$(terraform output -raw aks_name)" >> "$GITHUB_OUTPUT"
+          echo "aks_rg=$(terraform output -raw aks_rg)" >> "$GITHUB_OUTPUT"
+
+      - name: Setup kubectl
+        uses: azure/setup-kubectl@v4
+
+      - name: Setup helm
+        uses: azure/setup-helm@v4
+
+      - name: Get AKS credentials (admin)
+        run: |
+          az aks get-credentials \
+            -g "${{ steps.aks.outputs.aks_rg }}" \
+            -n "${{ steps.aks.outputs.aks_name }}" \
+            --admin \
+            --overwrite-existing
+
+      - name: Helm lint
+        run: helm lint charts/azproj-api
+
+      - name: Start zero-downtime probe
+        run: |
+          set -e
+
+          HOST="api.gkiladze.space"
+          PROBE_LOG="/tmp/zero-downtime-probe.log"
+          PROBE_FAIL="/tmp/zero-downtime-failed"
+          PROBE_SKIP="/tmp/zero-downtime-skipped"
+
+          rm -f "$PROBE_LOG" "$PROBE_FAIL" "$PROBE_SKIP"
+
+          echo "Checking whether public HTTPS endpoint is already healthy before rollout..."
+
+          BASELINE_STATUS=$(curl -sS -o /tmp/baseline-body.txt -w "%{http_code}" \
+            --connect-timeout 5 \
+            --max-time 10 \
+            "https://$HOST/healthz" || true)
+
+          echo "Baseline HTTPS status: $BASELINE_STATUS"
+
+          if [ "$BASELINE_STATUS" != "200" ]; then
+            echo "No healthy pre-existing public endpoint."
+            echo "This is likely first deploy after destroy/recreate."
+            echo "Skipping zero-downtime rollout probe for this run."
+            touch "$PROBE_SKIP"
+            exit 0
+          fi
+
+          echo "Existing endpoint is healthy. Starting zero-downtime rollout probe."
+
+          (
+            for i in {1..120}; do
+              STATUS=$(curl -sS -o /tmp/zero-downtime-body.txt -w "%{http_code}" \
+                --connect-timeout 3 \
+                --max-time 5 \
+                "https://$HOST/healthz" || true)
+
+              TS=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+              echo "$TS attempt=$i status=$STATUS" | tee -a "$PROBE_LOG"
+
+              if [ "$STATUS" != "200" ]; then
+                echo "$TS failed with status=$STATUS" | tee -a "$PROBE_LOG"
+                touch "$PROBE_FAIL"
+              fi
+
+              sleep 2
+            done
+          ) &
+
+          echo $! > /tmp/zero-downtime-probe.pid
+
+          echo "Started zero-downtime probe:"
+          cat /tmp/zero-downtime-probe.pid
+
+      - name: Helm deploy
+        run: |
+          helm upgrade --install azproj-api charts/azproj-api \
+            --reset-values \
+            --set image.repository="${{ steps.acr.outputs.acr_login_server }}/azproj-api" \
+            --set image.tag="${{ github.sha }}" \
+            --set ingress.enabled=true \
+            --set ingress.host="api.gkiladze.space" \
+            --set tls.enabled=true \
+            --set tls.issuerName="letsencrypt-prod" \
+            --set tls.issuerPrivateKeySecretName="letsencrypt-prod-account-key" \
+            --set tls.acmeServer="https://acme-v02.api.letsencrypt.org/directory" \
+            --set tls.email="gigakiladze@yahoo.com" \
+            --set autoscaling.enabled=true \
+            --set autoscaling.minReplicas=2 \
+            --set autoscaling.maxReplicas=6 \
+            --set autoscaling.targetCPUUtilizationPercentage=50 \
+            --set probes.path="/healthz" \
+            --wait --timeout 5m
+
+      - name: Verify rollout
+        run: |
+          kubectl rollout status deploy/azproj-api --timeout=180s
+          kubectl get pods -l app=azproj-api
+          kubectl get svc azproj-api
+
+      - name: Verify HPA exists
+        run: |
+          kubectl get hpa azproj-api
+          kubectl describe hpa azproj-api
+
+      - name: Prove /healthz from inside cluster
+        run: |
+          set -e
+
+          kubectl delete pod curl --ignore-not-found=true
+
+          kubectl run curl --restart=Never --image=curlimages/curl --command -- \
+            sh -c 'for i in 1 2 3 4 5; do curl -fsS --max-time 5 http://azproj-api.default.svc.cluster.local:8080/healthz && exit 0; sleep 2; done; exit 1'
+
+          for i in {1..60}; do
+            PHASE=$(kubectl get pod curl -o jsonpath='{.status.phase}' 2>/dev/null || echo "Missing")
+            echo "curl pod phase: $PHASE"
+            if [ "$PHASE" = "Succeeded" ]; then break; fi
+            if [ "$PHASE" = "Failed" ]; then
+              echo "---- curl pod describe ----"
+              kubectl describe pod curl || true
+              echo "---- curl pod logs ----"
+              kubectl logs pod/curl || true
+              exit 1
             fi
-  
             sleep 2
           done
-        ) &
-  
-        echo $! > /tmp/zero-downtime-probe.pid
-  
-        echo "Started zero-downtime probe:"
-        cat /tmp/zero-downtime-probe.pid
-  
-    - name: Helm deploy
-      run: |
-        helm upgrade --install azproj-api charts/azproj-api \
-          --reset-values \
-          --set image.repository="${{ steps.acr.outputs.acr_login_server }}/azproj-api" \
-          --set image.tag="${{ github.sha }}" \
-          --set ingress.enabled=true \
-          --set ingress.host="api.gkiladze.space" \
-          --set tls.enabled=true \
-          --set tls.issuerName="letsencrypt-prod" \
-          --set tls.issuerPrivateKeySecretName="letsencrypt-prod-account-key" \
-          --set tls.acmeServer="https://acme-v02.api.letsencrypt.org/directory" \
-          --set tls.email="gigakiladze@yahoo.com" \
-          --set autoscaling.enabled=true \
-          --set autoscaling.minReplicas=2 \
-          --set autoscaling.maxReplicas=6 \
-          --set autoscaling.targetCPUUtilizationPercentage=50 \
-          --set probes.path="/healthz" \
-          --wait --timeout 5m
-  
-    - name: Verify rollout
-      run: |
-        kubectl rollout status deploy/azproj-api --timeout=180s
-        kubectl get pods -l app=azproj-api
-        kubectl get svc azproj-api
-  
-    - name: Verify HPA exists
-      run: |
-        kubectl get hpa azproj-api
-        kubectl describe hpa azproj-api
-  
-    - name: Prove /healthz from inside cluster
-      run: |
-        set -e
-  
-        kubectl delete pod curl --ignore-not-found=true
-  
-        kubectl run curl --restart=Never --image=curlimages/curl --command -- \
-          sh -c 'for i in 1 2 3 4 5; do curl -fsS --max-time 5 http://azproj-api.default.svc.cluster.local:8080/healthz && exit 0; sleep 2; done; exit 1'
-  
-        for i in {1..60}; do
-          PHASE=$(kubectl get pod curl -o jsonpath='{.status.phase}' 2>/dev/null || echo "Missing")
-          echo "curl pod phase: $PHASE"
-          if [ "$PHASE" = "Succeeded" ]; then break; fi
-          if [ "$PHASE" = "Failed" ]; then
-            echo "---- curl pod describe ----"
+
+          PHASE=$(kubectl get pod curl -o jsonpath='{.status.phase}')
+          if [ "$PHASE" != "Succeeded" ]; then
+            echo "Timed out waiting for curl pod to finish"
+            kubectl get pod curl -o wide || true
             kubectl describe pod curl || true
-            echo "---- curl pod logs ----"
             kubectl logs pod/curl || true
+            kubectl get svc azproj-api -o wide || true
+            kubectl get endpoints azproj-api -o yaml || true
             exit 1
           fi
-          sleep 2
-        done
-  
-        PHASE=$(kubectl get pod curl -o jsonpath='{.status.phase}')
-        if [ "$PHASE" != "Succeeded" ]; then
-          echo "Timed out waiting for curl pod to finish"
-          kubectl get pod curl -o wide || true
-          kubectl describe pod curl || true
-          kubectl logs pod/curl || true
+
+          OUT=$(kubectl logs pod/curl || true)
+          echo "$OUT"
+
+          OUT_CLEAN=$(echo "$OUT" | tr -d '\r\n' | sed 's/^"//; s/"$//')
+          echo "HEALTH_PROOF=$OUT_CLEAN"
+          test "$OUT_CLEAN" = "healthy"
+
+          kubectl delete pod curl --ignore-not-found=true
+
+      - name: Prove public HTTP through ingress
+        run: |
+          set -e
+
+          HOST="api.gkiladze.space"
+          echo "Host: $HOST"
+
+          for i in {1..12}; do
+            STATUS=$(curl -sS -o /tmp/ingress-body.txt -w "%{http_code}" \
+              --connect-timeout 5 \
+              --max-time 15 \
+              "http://$HOST/healthz" || true)
+
+            echo "Attempt $i: HTTP $STATUS"
+
+            if [ "$STATUS" = "200" ] || [ "$STATUS" = "308" ]; then
+              echo "BODY:"
+              cat /tmp/ingress-body.txt || true
+              echo ""
+              echo "PUBLIC_DNS_HTTP_PROOF=http_${STATUS}"
+              exit 0
+            fi
+
+            sleep 10
+          done
+
+          echo "Public DNS HTTP proof failed"
+          nslookup "$HOST" || true
+          kubectl get ingress azproj-api -o wide || true
+          kubectl describe ingress azproj-api || true
           kubectl get svc azproj-api -o wide || true
-          kubectl get endpoints azproj-api -o yaml || true
+          kubectl -n ingress-nginx get svc ingress-nginx-controller -o wide || true
           exit 1
-        fi
-  
-        OUT=$(kubectl logs pod/curl || true)
-        echo "$OUT"
-  
-        OUT_CLEAN=$(echo "$OUT" | tr -d '\r\n' | sed 's/^"//; s/"$//')
-        echo "HEALTH_PROOF=$OUT_CLEAN"
-        test "$OUT_CLEAN" = "healthy"
-  
-        kubectl delete pod curl --ignore-not-found=true
-  
-    - name: Prove public HTTP through ingress
-      run: |
-        set -e
-  
-        HOST="api.gkiladze.space"
-        echo "Host: $HOST"
-  
-        for i in {1..12}; do
-          STATUS=$(curl -sS -o /tmp/ingress-body.txt -w "%{http_code}" \
-            --connect-timeout 5 \
-            --max-time 15 \
-            "http://$HOST/healthz" || true)
-  
-          echo "Attempt $i: HTTP $STATUS"
-  
-          if [ "$STATUS" = "200" ] || [ "$STATUS" = "308" ]; then
-            echo "BODY:"
-            cat /tmp/ingress-body.txt || true
-            echo ""
-            echo "PUBLIC_DNS_HTTP_PROOF=http_${STATUS}"
+
+      - name: Prove production HTTPS through ingress
+        run: |
+          set -e
+
+          HOST="api.gkiladze.space"
+          echo "Host: $HOST"
+
+          echo "---- cert-manager resources ----"
+          kubectl get clusterissuer
+          kubectl get certificate,certificaterequest,order,challenge -A || true
+
+          for i in {1..30}; do
+            STATUS=$(curl -sS -o /tmp/https-body.txt -w "%{http_code}" \
+              --connect-timeout 5 \
+              --max-time 15 \
+              "https://$HOST/healthz" || true)
+
+            echo "Attempt $i: HTTPS $STATUS"
+
+            if [ "$STATUS" = "200" ]; then
+              echo "BODY:"
+              cat /tmp/https-body.txt || true
+              echo ""
+              echo "PUBLIC_PROD_HTTPS_PROOF=http_200"
+              exit 0
+            fi
+
+            kubectl get certificate,order,challenge -A || true
+            sleep 20
+          done
+
+          echo "Production HTTPS proof failed"
+          kubectl describe ingress azproj-api || true
+          kubectl get certificate,certificaterequest,order,challenge -A || true
+          exit 1
+
+      - name: Prove app version endpoint
+        run: |
+          set -e
+
+          HOST="api.gkiladze.space"
+
+          echo "Calling /version..."
+          curl -sS "https://$HOST/version" | tee /tmp/version.json
+
+          echo ""
+          echo "APP_VERSION_PROOF=version_endpoint_reachable"
+
+      - name: Prove app logs are available
+        run: |
+          set -e
+
+          echo "---- recent azproj-api logs ----"
+          kubectl logs -l app=azproj-api --tail=50
+
+          echo ""
+          echo "APP_LOG_PROOF=kubectl_logs_available"
+
+      - name: Verify zero-downtime probe
+        run: |
+          set -e
+
+          PROBE_LOG="/tmp/zero-downtime-probe.log"
+          PROBE_FAIL="/tmp/zero-downtime-failed"
+          PROBE_SKIP="/tmp/zero-downtime-skipped"
+          PROBE_PID_FILE="/tmp/zero-downtime-probe.pid"
+
+          if [ -f "$PROBE_SKIP" ]; then
+            echo "ZERO_DOWNTIME_PROOF=skipped_first_deploy_after_destroy"
+            echo "Reason: no healthy public HTTPS endpoint existed before deployment."
             exit 0
           fi
-  
-          sleep 10
-        done
-  
-        echo "Public DNS HTTP proof failed"
-        nslookup "$HOST" || true
-        kubectl get ingress azproj-api -o wide || true
-        kubectl describe ingress azproj-api || true
-        kubectl get svc azproj-api -o wide || true
-        kubectl -n ingress-nginx get svc ingress-nginx-controller -o wide || true
-        exit 1
-  
-    - name: Prove production HTTPS through ingress
-      run: |
-        set -e
-  
-        HOST="api.gkiladze.space"
-        echo "Host: $HOST"
-  
-        echo "---- cert-manager resources ----"
-        kubectl get clusterissuer
-        kubectl get certificate,certificaterequest,order,challenge -A || true
-  
-        for i in {1..30}; do
-          STATUS=$(curl -sS -o /tmp/https-body.txt -w "%{http_code}" \
-            --connect-timeout 5 \
-            --max-time 15 \
-            "https://$HOST/healthz" || true)
-  
-          echo "Attempt $i: HTTPS $STATUS"
-  
-          if [ "$STATUS" = "200" ]; then
-            echo "BODY:"
-            cat /tmp/https-body.txt || true
-            echo ""
-            echo "PUBLIC_PROD_HTTPS_PROOF=http_200"
-            exit 0
+
+          if [ -f "$PROBE_PID_FILE" ]; then
+            kill "$(cat "$PROBE_PID_FILE")" 2>/dev/null || true
           fi
-  
-          kubectl get certificate,order,challenge -A || true
-          sleep 20
-        done
-  
-        echo "Production HTTPS proof failed"
-        kubectl describe ingress azproj-api || true
-        kubectl get certificate,certificaterequest,order,challenge -A || true
-        exit 1
-  
-    - name: Prove app version endpoint
-      run: |
-        set -e
-  
-        HOST="api.gkiladze.space"
-  
-        echo "Calling /version..."
-        curl -sS "https://$HOST/version" | tee /tmp/version.json
-  
-        echo ""
-        echo "APP_VERSION_PROOF=version_endpoint_reachable"
-  
-    - name: Prove app logs are available
-      run: |
-        set -e
-  
-        echo "---- recent azproj-api logs ----"
-        kubectl logs -l app=azproj-api --tail=50
-  
-        echo ""
-        echo "APP_LOG_PROOF=kubectl_logs_available"
-  
-    - name: Verify zero-downtime probe
-      run: |
-        set -e
-  
-        PROBE_LOG="/tmp/zero-downtime-probe.log"
-        PROBE_FAIL="/tmp/zero-downtime-failed"
-        PROBE_SKIP="/tmp/zero-downtime-skipped"
-        PROBE_PID_FILE="/tmp/zero-downtime-probe.pid"
-  
-        if [ -f "$PROBE_SKIP" ]; then
-          echo "ZERO_DOWNTIME_PROOF=skipped_first_deploy_after_destroy"
-          echo "Reason: no healthy public HTTPS endpoint existed before deployment."
-          exit 0
-        fi
-  
-        if [ -f "$PROBE_PID_FILE" ]; then
-          kill "$(cat "$PROBE_PID_FILE")" 2>/dev/null || true
-        fi
-  
-        echo "---- zero-downtime probe log ----"
-        cat "$PROBE_LOG" || true
-  
-        echo "---- non-200 responses ----"
-        grep -v "status=200" "$PROBE_LOG" || true
-  
-        SUCCESS_COUNT=$(grep -c "status=200" "$PROBE_LOG" || true)
-        FAILURE_COUNT=$(grep -c "failed with status=" "$PROBE_LOG" || true)
-  
-        echo "Successful requests: $SUCCESS_COUNT"
-        echo "Failed requests: $FAILURE_COUNT"
-  
-        if [ -f "$PROBE_FAIL" ]; then
-          echo "ZERO_DOWNTIME_PROOF=failed"
-  
-          echo "---- deployment ----"
-          kubectl get deployment azproj-api -o wide || true
-  
-          echo "---- pods ----"
-          kubectl get pods -l app=azproj-api -o wide || true
-  
-          echo "---- endpoints ----"
-          kubectl get endpoints azproj-api -o yaml || true
-  
-          echo "---- recent events ----"
-          kubectl get events --sort-by=.lastTimestamp | tail -n 40 || true
-  
-          exit 1
-        fi
-  
-        if [ "$SUCCESS_COUNT" -lt 5 ]; then
-          echo "Not enough successful requests captured during deployment"
-          exit 1
-        fi
-  
-        echo "ZERO_DOWNTIME_PROOF=no_failed_requests"
-  ```
+
+          echo "---- zero-downtime probe log ----"
+          cat "$PROBE_LOG" || true
+
+          echo "---- non-200 responses ----"
+          grep -v "status=200" "$PROBE_LOG" || true
+
+          SUCCESS_COUNT=$(grep -c "status=200" "$PROBE_LOG" || true)
+          FAILURE_COUNT=$(grep -c "failed with status=" "$PROBE_LOG" || true)
+
+          echo "Successful requests: $SUCCESS_COUNT"
+          echo "Failed requests: $FAILURE_COUNT"
+
+          if [ -f "$PROBE_FAIL" ]; then
+            echo "ZERO_DOWNTIME_PROOF=failed"
+
+            echo "---- deployment ----"
+            kubectl get deployment azproj-api -o wide || true
+
+            echo "---- pods ----"
+            kubectl get pods -l app=azproj-api -o wide || true
+
+            echo "---- endpoints ----"
+            kubectl get endpoints azproj-api -o yaml || true
+
+            echo "---- recent events ----"
+            kubectl get events --sort-by=.lastTimestamp | tail -n 40 || true
+
+            exit 1
+          fi
+
+          if [ "$SUCCESS_COUNT" -lt 5 ]; then
+            echo "Not enough successful requests captured during deployment"
+            exit 1
+          fi
+
+          echo "ZERO_DOWNTIME_PROOF=no_failed_requests"
