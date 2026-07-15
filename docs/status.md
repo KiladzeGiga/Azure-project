@@ -289,6 +289,38 @@ Autoscaling proof succeeded:
   - pod was running version `b7518d17acad77f73d1542fc0d6efe1ade4a79f9`
   - request returned HTTP `200`
 
+## Proof — Week 07 Controlled Failure
+
+- Added manual controlled failure mode to `app-build-push`.
+- Controlled failure:
+  - `bad_readiness_test=true`
+  - readiness/liveness path intentionally changed to `/bad-readiness-path`
+- Helm rollout failed as expected:
+  - `Deployment/default/azproj-api not ready`
+  - rollout timed out while updating new replicas
+- Kubernetes blocked the bad pod from receiving traffic:
+  - old pods stayed `Ready`
+  - new pod stayed `Ready: False`
+  - new pod appeared under `notReadyAddresses`
+- Kubernetes events identified the cause:
+  - `Readiness probe failed: HTTP probe failed with statuscode: 404`
+  - `Liveness probe failed: HTTP probe failed with statuscode: 404`
+- Public HTTPS stayed healthy through old ready pods:
+  - `Public HTTPS status: 200`
+  - response: `"healthy"`
+- Controlled failure proof succeeded:
+  - `CONTROLLED_FAILURE_PROOF=old_version_still_serving`
+
+## Week 07 Result
+
+Observability and troubleshooting proof succeeded:
+
+- A bad release was introduced intentionally.
+- Kubernetes readiness/liveness probes detected the problem.
+- The bad pod was excluded from ready Service endpoints.
+- Existing healthy pods continued serving public HTTPS traffic.
+- Events, pod description, endpoints, and public curl proof explained the failure.
+
 ## What’s Done
 
 * [x] Remote Terraform state in Azure Storage.
