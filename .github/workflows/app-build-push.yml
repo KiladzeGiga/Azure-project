@@ -300,6 +300,16 @@ jobs:
           echo ""
           echo "APP_VERSION_PROOF=version_endpoint_reachable"
           
+      - name: Prove app logs are available
+        run: |
+          set -e
+
+          echo "---- recent azproj-api logs ----"
+          kubectl logs -l app=azproj-api --tail=50
+
+          echo ""
+          echo "APP_LOG_PROOF=kubectl_logs_available"
+          
       - name: Verify zero-downtime probe
         run: |
           set -e
