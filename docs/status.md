@@ -266,6 +266,29 @@ Autoscaling proof succeeded:
 - Metrics-server/HPA metrics were working.
 - Deployment returned to the expected healthy baseline.
 
+## Proof — Week 07
+
+- Added `/version` endpoint.
+- `/version` returns:
+  - app name
+  - deployed image/version SHA
+  - serving pod name
+  - UTC timestamp
+- Added request logging to the app.
+- Public version endpoint proof succeeded:
+  - `APP_VERSION_PROOF=version_endpoint_reachable`
+- Example `/version` response:
+  - app: `azproj-api`
+  - version: `1f8ca23fede718ed0466ca0131791f708fc32ce2`
+  - pod: `azproj-api-88c7f5cbd-9sl7g`
+- App logs are available through Kubernetes:
+  - `kubectl logs -l app=azproj-api`
+  - `APP_LOG_PROOF=kubectl_logs_available`
+- Example log evidence:
+  - `/version` request reached pod `azproj-api-5756dfcfd8-rrcmj`
+  - pod was running version `b7518d17acad77f73d1542fc0d6efe1ade4a79f9`
+  - request returned HTTP `200`
+
 ## What’s Done
 
 * [x] Remote Terraform state in Azure Storage.
