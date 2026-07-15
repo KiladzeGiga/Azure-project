@@ -288,6 +288,18 @@ jobs:
           kubectl get certificate,certificaterequest,order,challenge -A || true
           exit 1
           
+      - name: Prove app version endpoint
+        run: |
+          set -e
+
+          HOST="api.gkiladze.space"
+
+          echo "Calling /version..."
+          curl -sS "https://$HOST/version" | tee /tmp/version.json
+
+          echo ""
+          echo "APP_VERSION_PROOF=version_endpoint_reachable"
+          
       - name: Verify zero-downtime probe
         run: |
           set -e

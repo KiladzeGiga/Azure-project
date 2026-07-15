@@ -1,8 +1,48 @@
 var builder = WebApplication.CreateBuilder(args);
+
+builder.Logging.ClearProviders();
+builder.Logging.AddConsole();
+
 var app = builder.Build();
 
+var version = Environment.GetEnvironmentVariable("APP_VERSION") ?? "local";
+var podName = Environment.GetEnvironmentVariable("HOSTNAME") ?? "unknown";
+
+app.Use(async (context, next) =>
+{
+    var logger = context.RequestServices.GetRequiredService<ILoggerFactory>()
+        .CreateLogger("RequestLog");
+
+    logger.LogInformation(
+        "HTTP {Method} {Path} from {RemoteIp} on pod {PodName} version {Version}",
+        context.Request.Method,
+        context.Request.Path,
+        context.Connection.RemoteIpAddress,
+        podName,
+        version);
+
+    await next();
+
+    logger.LogInformation(
+        "HTTP {Method} {Path} responded {StatusCode} on pod {PodName} version {Version}",
+        context.Request.Method,
+        context.Request.Path,
+        context.Response.StatusCode,
+        podName,
+        version);
+});
+
 app.MapGet("/", () => Results.Ok("ok"));
+
 app.MapGet("/healthz", () => Results.Ok("healthy"));
+
+app.MapGet("/version", () => Results.Ok(new
+{
+    app = "azproj-api",
+    version,
+    podName,
+    timestampUtc = DateTime.UtcNow
+}));
 
 app.MapGet("/cpu", () =>
 {
@@ -17,7 +57,9 @@ app.MapGet("/cpu", () =>
     return Results.Ok(new
     {
         status = "cpu load generated",
-        value
+        value,
+        podName,
+        version
     });
 });
 
