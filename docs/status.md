@@ -321,6 +321,16 @@ Observability and troubleshooting proof succeeded:
 - Existing healthy pods continued serving public HTTPS traffic.
 - Events, pod description, endpoints, and public curl proof explained the failure.
 
+## Workflow cleanup — Week 07
+
+- Split controlled failure testing out of the normal app deployment workflow.
+- `app-build-push` is now responsible only for normal build, push, deploy, and proof.
+- `controlled-failure` is a separate manual workflow for readiness-failure troubleshooting drills.
+- Verified both workflows run successfully:
+  - `controlled-failure`
+  - `app-build-push`
+- Verified normal app deployment works after the controlled failure workflow.
+
 ## What’s Done
 
 * [x] Remote Terraform state in Azure Storage.
