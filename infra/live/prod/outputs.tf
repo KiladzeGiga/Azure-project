@@ -32,3 +32,13 @@ output "api_fqdn" {
   description = "Public API DNS name"
   value       = azurerm_dns_a_record.api.fqdn
 }
+
+output "log_analytics_workspace_name" {
+  description = "Log Analytics workspace name"
+  value       = azurerm_log_analytics_workspace.main.name
+}
+
+output "log_analytics_workspace_id" {
+  description = "Log Analytics workspace resource ID"
+  value       = azurerm_log_analytics_workspace.main.id
+}
