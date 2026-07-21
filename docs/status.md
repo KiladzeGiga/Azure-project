@@ -331,6 +331,42 @@ Observability and troubleshooting proof succeeded:
   - `app-build-push`
 - Verified normal app deployment works after the controlled failure workflow.
 
+## Week 08 Result
+
+Azure Monitor and Log Analytics are enabled for AKS.
+
+Proof completed:
+
+- Created Log Analytics workspace:
+  - `law-azproj-prod`
+- Connected AKS to Azure Monitor / Container insights.
+- Verified Azure Monitor agent pods are running in `kube-system`:
+  - `ama-logs`
+  - `ama-logs-rs`
+- Verified Terraform outputs include:
+  - `log_analytics_workspace_name`
+  - `log_analytics_workspace_id`
+- Generated application traffic against:
+  - `/healthz`
+  - `/version`
+  - `/cpu`
+- Verified application logs locally with:
+  - `kubectl logs -l app=azproj-api --tail=50`
+- Verified application logs are queryable in Azure Portal using Log Analytics table:
+  - `ContainerLog`
+
+Working KQL query:
+
+```kusto
+ContainerLog
+| where TimeGenerated > ago(1h)
+| where LogEntry contains "/version"
+   or LogEntry contains "/healthz"
+   or LogEntry contains "/cpu"
+   or LogEntry contains "RequestLog"
+| project TimeGenerated, Name, LogEntry
+| order by TimeGenerated desc
+
 ## What’s Done
 
 * [x] Remote Terraform state in Azure Storage.
