@@ -28,6 +28,10 @@ spec:
           env:
             - name: APP_VERSION
               value: {{ .Values.image.tag | quote }}
+            - name: APP_ENVIRONMENT
+              value: {{ .Values.appConfig.environment | quote }}
+            - name: MARKETPLACE_NAME
+              value: {{ .Values.appConfig.marketplaceName | quote }}
           ports:
             - containerPort: {{ .Values.service.port }}
           lifecycle:

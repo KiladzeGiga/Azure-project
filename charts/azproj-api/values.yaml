@@ -43,3 +43,7 @@ autoscaling:
   minReplicas: 2
   maxReplicas: 6
   targetCPUUtilizationPercentage: 50
+  
+appConfig:
+  environment: "prod"
+  marketplaceName: "Cloud-Native Marketplace"
