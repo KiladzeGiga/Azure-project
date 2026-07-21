@@ -7,6 +7,8 @@ var app = builder.Build();
 
 var version = Environment.GetEnvironmentVariable("APP_VERSION") ?? "local";
 var podName = Environment.GetEnvironmentVariable("HOSTNAME") ?? "unknown";
+var environmentName = Environment.GetEnvironmentVariable("APP_ENVIRONMENT") ?? "local";
+var marketplaceName = Environment.GetEnvironmentVariable("MARKETPLACE_NAME") ?? "Cloud-Native Marketplace";
 
 app.Use(async (context, next) =>
 {
@@ -62,5 +64,15 @@ app.MapGet("/cpu", () =>
         version
     });
 });
+
+app.MapGet("/config", () => Results.Ok(new
+{
+    app = "azproj-api",
+    environment = environmentName,
+    marketplace = marketplaceName,
+    version,
+    podName,
+    timestampUtc = DateTime.UtcNow
+}));
 
 app.Run("http://0.0.0.0:8080");
