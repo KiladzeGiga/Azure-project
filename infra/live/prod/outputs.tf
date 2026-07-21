@@ -42,3 +42,18 @@ output "log_analytics_workspace_id" {
   description = "Log Analytics workspace resource ID"
   value       = azurerm_log_analytics_workspace.main.id
 }
+
+output "key_vault_name" {
+  description = "Azure Key Vault name"
+  value       = azurerm_key_vault.main.name
+}
+
+output "key_vault_id" {
+  description = "Azure Key Vault resource ID"
+  value       = azurerm_key_vault.main.id
+}
+
+output "key_vault_uri" {
+  description = "Azure Key Vault URI"
+  value       = azurerm_key_vault.main.vault_uri
+}
