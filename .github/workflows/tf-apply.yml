@@ -52,5 +52,8 @@ jobs:
             -backend-config="key=prod.terraform.tfstate" \
             -backend-config="use_azuread_auth=true"
 
+      - name: terraform plan
+        run: terraform plan -out=tfplan
+
       - name: terraform apply
-        run: terraform apply -auto-approve
+        run: terraform apply -auto-approve tfplan
