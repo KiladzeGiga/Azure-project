@@ -366,6 +366,45 @@ ContainerLog
    or LogEntry contains "RequestLog"
 | project TimeGenerated, Name, LogEntry
 | order by TimeGenerated desc
+```
+
+## Week 09 Result
+
+Configuration and secure app settings are complete.
+
+Proof completed:
+
+- Added safe runtime configuration through Helm values and environment variables.
+- Added `/config` endpoint to expose only non-secret runtime configuration.
+- Verified `/config` returns:
+  - environment: `prod`
+  - marketplace: `Cloud-Native Marketplace`
+  - app version
+  - pod name
+- Enabled AKS Key Vault Secrets Provider.
+- Verified CSI driver pods are running:
+  - `aks-secrets-store-csi-driver`
+  - `aks-secrets-store-provider-azure`
+- Created Azure Key Vault:
+  - `kv-azproj-huau3y`
+- Created demo secret:
+  - `marketplace-connection`
+- Granted the Key Vault CSI managed identity access to read secrets.
+- Added `SecretProviderClass` for Azure Key Vault.
+- Mounted the Key Vault secret into the application pod.
+- Added `/secret-status` endpoint.
+- Verified the app detects the mounted secret without exposing its value.
+
+Proof response:
+
+```json
+{
+  "app": "azproj-api",
+  "secretName": "marketplace-connection",
+  "mounted": true,
+  "valueExposed": false
+}
+```
 
 ## What’s Done
 
