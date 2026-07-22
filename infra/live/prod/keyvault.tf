@@ -29,6 +29,10 @@ resource "azurerm_key_vault_secret" "marketplace_connection" {
   name         = "marketplace-connection"
   value        = "demo-secret-value"
   key_vault_id = azurerm_key_vault.main.id
+
+  depends_on = [
+    azurerm_role_assignment.kv_admin_current
+  ]
 }
 
 resource "azurerm_role_assignment" "kv_admin_current" {

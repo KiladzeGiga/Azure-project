@@ -32,6 +32,10 @@ spec:
               value: {{ .Values.appConfig.environment | quote }}
             - name: MARKETPLACE_NAME
               value: {{ .Values.appConfig.marketplaceName | quote }}
+          volumeMounts:
+            - name: secrets-store
+              mountPath: "/mnt/secrets-store"
+              readOnly: true
           ports:
             - containerPort: {{ .Values.service.port }}
           lifecycle:
@@ -56,3 +60,10 @@ spec:
             failureThreshold: {{ .Values.probes.failureThreshold }}
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
+      volumes:
+        - name: secrets-store
+          csi:
+            driver: secrets-store.csi.k8s.io
+            readOnly: true
+            volumeAttributes:
+              secretProviderClass: azproj-api-secrets
