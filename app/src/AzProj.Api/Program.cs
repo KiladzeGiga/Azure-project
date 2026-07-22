@@ -75,4 +75,21 @@ app.MapGet("/config", () => Results.Ok(new
     timestampUtc = DateTime.UtcNow
 }));
 
+app.MapGet("/secret-status", () =>
+{
+    var secretPath = "/mnt/secrets-store/marketplace-connection";
+    var exists = File.Exists(secretPath);
+
+    return Results.Ok(new
+    {
+        app = "azproj-api",
+        secretName = "marketplace-connection",
+        mounted = exists,
+        valueExposed = false,
+        podName,
+        version,
+        timestampUtc = DateTime.UtcNow
+    });
+});
+
 app.Run("http://0.0.0.0:8080");

@@ -47,3 +47,9 @@ autoscaling:
 appConfig:
   environment: "prod"
   marketplaceName: "Cloud-Native Marketplace"
+  
+keyVault:
+  enabled: true
+  name: "kv-azproj-huau3y"
+  tenantId: "5f711a28-9dbe-4267-9937-2ca9a0f3d8f0"
+  secretName: "marketplace-connection"
