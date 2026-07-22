@@ -31,14 +31,20 @@ resource "azurerm_key_vault_secret" "marketplace_connection" {
   key_vault_id = azurerm_key_vault.main.id
 
   depends_on = [
-    azurerm_role_assignment.kv_admin_current
+    azurerm_role_assignment.kv_apply_secret_officer
   ]
 }
 
-resource "azurerm_role_assignment" "kv_admin_current" {
+resource "azurerm_role_assignment" "kv_apply_secret_officer" {
   scope                = azurerm_key_vault.main.id
   role_definition_name = "Key Vault Secrets Officer"
-  principal_id         = data.azurerm_client_config.current.object_id
+  principal_id         = var.github_apply_principal_id
+}
+
+resource "azurerm_role_assignment" "kv_plan_secret_reader" {
+  scope                = azurerm_key_vault.main.id
+  role_definition_name = "Key Vault Secrets User"
+  principal_id         = var.github_plan_principal_id
 }
 
 resource "azurerm_role_assignment" "kv_csi_secret_user" {
