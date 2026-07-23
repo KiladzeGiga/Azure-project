@@ -87,6 +87,13 @@ jobs:
 
           set -e
 
+      - name: Pre-destroy Azure Monitor cleanup
+        run: |
+          set +e
+          az resource delete \
+            --ids "/subscriptions/${{ vars.AZURE_SUBSCRIPTION_ID }}/resourceGroups/rg-azproj-prod/providers/Microsoft.OperationsManagement/solutions/ContainerInsights(law-azproj-prod)"
+          set -e
+
       - name: terraform destroy plan
         run: terraform plan -destroy -out=destroy.tfplan
 
