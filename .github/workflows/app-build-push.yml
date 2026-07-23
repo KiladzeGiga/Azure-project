@@ -64,7 +64,7 @@ jobs:
           
       - name: ACR login
         run: |
-          az acr login --name "${{ steps.acr.outputs.acr_name }}"
+          az acr login --name "${{ steps.tf_outputs.outputs.acr_name }}"
 
       - name: Build and push
         run: |
