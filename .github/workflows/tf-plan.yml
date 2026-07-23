@@ -2,9 +2,7 @@ name: terraform-plan
 
 on:
   pull_request:
-    paths:
-      - "infra/**"
-      - ".github/workflows/tf-plan.yml"
+    branches: ["main"]
 
 permissions:
   id-token: write
