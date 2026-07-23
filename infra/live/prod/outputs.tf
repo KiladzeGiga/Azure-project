@@ -57,3 +57,8 @@ output "key_vault_uri" {
   description = "Azure Key Vault URI"
   value       = azurerm_key_vault.main.vault_uri
 }
+
+output "key_vault_csi_client_id" {
+  description = "Client ID of the AKS Key Vault CSI add-on managed identity"
+  value       = azurerm_kubernetes_cluster.aks.key_vault_secrets_provider[0].secret_identity[0].client_id
+}

@@ -49,20 +49,26 @@ jobs:
             -backend-config="key=prod.terraform.tfstate" \
             -backend-config="use_azuread_auth=true"
 
-      - name: Read ACR outputs
-        id: acr
+      - name: Read Terraform outputs
+        id: tf_outputs
         working-directory: infra/live/prod
         run: |
           echo "acr_name=$(terraform output -raw acr_name)" >> "$GITHUB_OUTPUT"
           echo "acr_login_server=$(terraform output -raw acr_login_server)" >> "$GITHUB_OUTPUT"
+          
+          KEY_VAULT_NAME=$(terraform output -raw key_vault_name)
+          KEY_VAULT_CSI_CLIENT_ID=$(terraform output -raw key_vault_csi_client_id)
 
+          echo "key_vault_name=$KEY_VAULT_NAME" >> "$GITHUB_OUTPUT"
+          echo "key_vault_csi_client_id=$KEY_VAULT_CSI_CLIENT_ID" >> "$GITHUB_OUTPUT"
+          
       - name: ACR login
         run: |
           az acr login --name "${{ steps.acr.outputs.acr_name }}"
 
       - name: Build and push
         run: |
-          IMAGE="${{ steps.acr.outputs.acr_login_server }}/azproj-api:${{ github.sha }}"
+          IMAGE="${{ steps.tf_outputs.outputs.acr_login_server }}/azproj-api:${{ github.sha }}"
           echo "IMAGE=$IMAGE" >> "$GITHUB_ENV"
           docker build -t "$IMAGE" -f app/Dockerfile app
           docker push "$IMAGE"
@@ -152,7 +158,7 @@ jobs:
         run: |
           helm upgrade --install azproj-api charts/azproj-api \
             --reset-values \
-            --set image.repository="${{ steps.acr.outputs.acr_login_server }}/azproj-api" \
+            --set image.repository="${{ steps.tf_outputs.outputs.acr_login_server }}/azproj-api" \
             --set image.tag="${{ github.sha }}" \
             --set ingress.enabled=true \
             --set ingress.host="api.gkiladze.space" \
@@ -166,6 +172,11 @@ jobs:
             --set autoscaling.maxReplicas=6 \
             --set autoscaling.targetCPUUtilizationPercentage=50 \
             --set probes.path="/healthz" \
+            --set keyVault.enabled=true \
+            --set keyVault.name="${{ steps.acr.outputs.key_vault_name }}" \
+            --set keyVault.tenantId="${{ vars.AZURE_TENANT_ID }}" \
+            --set keyVault.secretName="marketplace-connection" \
+            --set keyVault.userAssignedIdentityId="${{ steps.acr.outputs.key_vault_csi_client_id }}" \
             --wait --timeout 5m
 
       - name: Verify rollout
