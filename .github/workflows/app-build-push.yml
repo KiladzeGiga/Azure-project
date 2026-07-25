@@ -173,10 +173,10 @@ jobs:
             --set autoscaling.targetCPUUtilizationPercentage=50 \
             --set probes.path="/healthz" \
             --set keyVault.enabled=true \
-            --set keyVault.name="${{ steps.acr.outputs.key_vault_name }}" \
+            --set keyVault.name="${{ steps.tf_outputs.outputs.key_vault_name }}" \
             --set keyVault.tenantId="${{ vars.AZURE_TENANT_ID }}" \
             --set keyVault.secretName="marketplace-connection" \
-            --set keyVault.userAssignedIdentityId="${{ steps.acr.outputs.key_vault_csi_client_id }}" \
+            --set keyVault.userAssignedIdentityId="${{ steps.tf_outputs.outputs.key_vault_csi_client_id }}" \
             --wait --timeout 5m
 
       - name: Verify rollout
