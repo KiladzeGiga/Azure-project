@@ -62,3 +62,18 @@ output "key_vault_csi_client_id" {
   description = "Client ID of the AKS Key Vault CSI add-on managed identity"
   value       = azurerm_kubernetes_cluster.aks.key_vault_secrets_provider[0].secret_identity[0].client_id
 }
+
+output "sql_server_name" {
+  description = "Azure SQL Server name"
+  value       = azurerm_mssql_server.main.name
+}
+
+output "sql_database_name" {
+  description = "Azure SQL Database name"
+  value       = azurerm_mssql_database.marketplace.name
+}
+
+output "sql_server_fqdn" {
+  description = "Azure SQL Server fully qualified domain name"
+  value       = azurerm_mssql_server.main.fully_qualified_domain_name
+}
