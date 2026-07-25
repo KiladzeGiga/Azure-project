@@ -49,8 +49,11 @@ appConfig:
   marketplaceName: "Cloud-Native Marketplace"
   
 keyVault:
-  enabled: true
+  enabled: false
   name: "kv-azproj-huau3y"
   tenantId: "5f711a28-9dbe-4267-9937-2ca9a0f3d8f0"
   secretName: "marketplace-connection"
   userAssignedIdentityId: "4c1fae16-d9ec-47e1-a74e-b3828b0d2f23"
+  secrets:
+    - marketplace-connection
+    - marketplace-db-connection

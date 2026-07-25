@@ -406,6 +406,20 @@ Proof response:
 }
 ```
 
+### Destroy/recreate fix
+
+After testing destroy/recreate, Key Vault values were made dynamic.
+
+- `app-build-push` now reads current Terraform outputs:
+  - `acr_name`
+  - `acr_login_server`
+  - `key_vault_name`
+  - `key_vault_csi_client_id`
+- Helm receives Key Vault values from Terraform outputs instead of hardcoded `values.yaml`.
+- Added fail-fast validation for required Terraform outputs.
+- Verified app deployment works after infrastructure recreation.
+- Verified Key Vault secret mounting works after recreation.
+
 ## What’s Done
 
 * [x] Remote Terraform state in Azure Storage.
