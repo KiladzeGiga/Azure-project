@@ -175,7 +175,8 @@ jobs:
             --set keyVault.enabled=true \
             --set keyVault.name="${{ steps.tf_outputs.outputs.key_vault_name }}" \
             --set keyVault.tenantId="${{ vars.AZURE_TENANT_ID }}" \
-            --set keyVault.secretName="marketplace-connection" \
+            --set keyVault.secrets[0]="marketplace-connection" \
+            --set keyVault.secrets[1]="marketplace-db-connection" \
             --set keyVault.userAssignedIdentityId="${{ steps.tf_outputs.outputs.key_vault_csi_client_id }}" \
             --wait --timeout 5m
 
