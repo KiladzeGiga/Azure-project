@@ -239,6 +239,6 @@ static async Task EnsureProductsTableAsync(string connectionString)
     await command.ExecuteNonQueryAsync();
 }
 
-record ProductCreateRequest(string Name, decimal Price);
-
 app.Run("http://0.0.0.0:8080");
+
+record ProductCreateRequest(string Name, decimal Price);
