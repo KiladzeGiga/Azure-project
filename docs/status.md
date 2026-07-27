@@ -420,6 +420,41 @@ After testing destroy/recreate, Key Vault values were made dynamic.
 - Verified app deployment works after infrastructure recreation.
 - Verified Key Vault secret mounting works after recreation.
 
+## Week 10 Result
+
+Managed database integration is complete.
+
+Proof completed:
+
+- Created Azure SQL Server with Terraform:
+  - `sql-azproj-ra316c`
+- Created Azure SQL Database with Terraform:
+  - `sqldb-azproj-marketplace`
+- Stored the database connection string in Azure Key Vault:
+  - `marketplace-db-connection`
+- Mounted the database connection secret into the AKS pod using Key Vault CSI.
+- Verified both mounted secrets are present in the pod:
+  - `marketplace-connection`
+  - `marketplace-db-connection`
+- Added database endpoints:
+  - `GET /db-status`
+  - `POST /products`
+  - `GET /products`
+- Verified product data can be written to Azure SQL and read back from the API.
+- Verified the database secret/connection string is not exposed by the app.
+
+Proof response:
+
+```json
+[
+  {
+    "id": 1,
+    "name": "Demo Product",
+    "price": 19.99,
+    "createdUtc": "2026-07-26T20:27:04.8737887"
+  }
+]
+
 ## What’s Done
 
 * [x] Remote Terraform state in Azure Storage.

@@ -32,9 +32,30 @@ resource "azurerm_mssql_database" "marketplace" {
   server_id = azurerm_mssql_server.main.id
   sku_name  = "Basic"
 
+  short_term_retention_policy {
+    retention_days = 7
+  }
+
   tags = {
     project = "azure-project"
     env     = "prod"
+  }
+}
+
+resource "azurerm_mssql_database" "marketplace_restore_drill" {
+  count = var.enable_restore_drill ? 1 : 0
+
+  name                        = "sqldb-azproj-marketplace-restore-drill"
+  server_id                   = azurerm_mssql_server.main.id
+  sku_name                    = "Basic"
+  create_mode                 = "PointInTimeRestore"
+  creation_source_database_id = azurerm_mssql_database.marketplace.id
+  restore_point_in_time       = var.restore_point_in_time
+
+  tags = {
+    project = "azure-project"
+    env     = "prod"
+    purpose = "restore-drill"
   }
 }
 
