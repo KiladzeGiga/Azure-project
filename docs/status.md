@@ -445,13 +445,49 @@ Proof completed:
 
 Proof response:
 
-```json
+``json
 [
   {
     "id": 1,
     "name": "Demo Product",
     "price": 19.99,
     "createdUtc": "2026-07-26T20:27:04.8737887"
+  }
+]
+
+## Week 11 Result
+
+Backup, restore, and disaster recovery drill are complete.
+
+Proof completed:
+
+- Configured explicit short-term backup retention for Azure SQL Database.
+- Added Terraform-controlled restore drill switch:
+  - `enable_restore_drill`
+  - `restore_point_in_time`
+- Created known test data through the production API:
+  - product name: `Restore Drill Product`
+  - price: `42.00`
+- Ran a non-destructive point-in-time restore drill.
+- Created restored Azure SQL Database:
+  - `sqldb-azproj-marketplace-restore-drill`
+- Verified the original production database stayed online during the restore drill.
+- Verified the application continued to read production data during the restore drill.
+- Verified `/db-status` stayed healthy:
+  - `databaseConfigured: true`
+  - `canConnect: true`
+  - `valueExposed: false`
+- Confirmed the application does not expose database secrets or connection strings.
+
+Proof responses:
+
+``json
+[
+  {
+    "id": 1,
+    "name": "Restore Drill Product",
+    "price": 42.00,
+    "createdUtc": "2026-07-27T12:06:40.4762577"
   }
 ]
 
